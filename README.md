@@ -13,5 +13,8 @@ capacity in megalitres per day.
 - Setup screen for configuring sites, treatment stages and assets
 - Configurable capacity rules — no plant behaviour is hardcoded
 
-Zero install: open `wtw-simulator/index.html` in a browser. No server, no build
-step, no dependencies. See [the project README](wtw-simulator/README.md).
+**Live:** https://gilvanrds1-bit.github.io/Claude-projects/wtw-simulator/
+
+Zero install — no server, no build step, no dependencies. Runs equally well from
+the link above or by opening `wtw-simulator/index.html` directly. See
+[the project README](wtw-simulator/README.md).

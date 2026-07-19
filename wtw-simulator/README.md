@@ -5,11 +5,18 @@ assets are taken out of service.
 
 ## Opening it
 
-Double-click **`index.html`**. That is all — there is nothing to install, no
-server to start and no login. It works offline.
+**Live version:**
+https://gilvanrds1-bit.github.io/Claude-projects/wtw-simulator/
 
-To use it on a tablet, copy the whole `wtw-simulator` folder onto the tablet and
-open `index.html` from there.
+That is the easiest way onto a tablet — open the link in the browser, then use
+*Add to Home Screen* to get an icon that opens full screen. It updates
+automatically whenever a change is pushed to `main`.
+
+**Or run it locally:** double-click **`index.html`**. There is nothing to
+install, no server to start and no login, and it works offline. Copying the
+whole `wtw-simulator` folder onto a tablet works too.
+
+Note that each device keeps its own records — see Known limits below.
 
 Everything you enter is saved in that browser on that device, so it survives
 closing the tab or the tablet sleeping. Nothing is sent anywhere.
@@ -153,7 +160,21 @@ js/ui.js        the Region and operator screens, and handling taps
 
 Five works, 240 Ml/d regional baseline.
 
-**Example WTW**, 100 Ml/d baseline, 17 assets — this is the worked example:
+| Works | Baseline | Source and process | Stages | Assets |
+| --- | --- | --- | --- | --- |
+| Example WTW | 100 Ml/d | Lowland, full conventional train | 8 | 17 |
+| Moorland WTW | 60 Ml/d | Upland reservoir, slow sand filters | 5 | 9 |
+| Riverside WTW | 40 Ml/d | River, membranes | 4 | 9 |
+| Estuary WTW | 25 Ml/d | Tidal river, membranes | 4 | 7 |
+| Hilltop WTW | 15 Ml/d | Boreholes, groundwater | 3 | 5 |
+
+Each site exercises a different part of the model, so between them they cover
+the situations a real region throws up.
+
+### Example WTW — the fully-featured one
+
+The complete conventional train: raw pumping, coagulation, clarification, rapid
+gravity filtration, GAC, UV, chlorination, final pumping.
 
 - 1 duty + 1 standby raw water pump (100 Ml/d each)
 - Coagulant dosing plant — critical, stops production
@@ -164,13 +185,63 @@ Five works, 240 Ml/d regional baseline.
 - Chlorine dosing plant — critical, stops production
 - 1 duty + 1 standby final water pump
 
-Plus four more sites so the regional view has something to add up:
+Deliberately the most resilient site: standby pumps at both ends, five filters
+so losing one costs only 20%, and a GAC stage rated 150 Ml/d against a 100 Ml/d
+baseline, so one GAC vessel out costs nothing. It is also the only site where
+all three outage rules appear together.
 
-- **Moorland WTW**, 60 Ml/d — upland surface water, 4 slow sand filters, and a
-  UV unit that holds the works at 45 Ml/d when it is out
-- **Riverside WTW**, 40 Ml/d — membrane plant, 4 racks
-- **Estuary WTW**, 25 Ml/d — membrane plant on a tidal river
-- **Hilltop WTW**, 15 Ml/d — small borehole works, no clarification
+### Moorland WTW — upland water, and a UV unit that really bites
+
+Upland reservoir water is low in turbidity, so this site skips clarification
+entirely and uses four slow sand filters. No GAC either.
+
+The point of interest is the UV. Same asset type and same rule as Example WTW,
+very different consequence: **out of service it holds the works at 45 of
+60 Ml/d, a 25% loss, against Example's 4%.** Two sites, same rule, wildly
+different impact, and neither is hardcoded — this is what "configurable per
+asset" actually buys you.
+
+Its four filters are also chunkier: each is 25% of output, against 20% at
+Example.
+
+### Riverside WTW — membranes replacing everything
+
+Membrane filtration does clarification and filtration in one step, which is why
+this site has only four stages. Four racks at 10 Ml/d, standby pumps at both
+ends. Straightforward, and included as the ordinary-plant case.
+
+### Estuary WTW — the brittle one
+
+Same membrane approach but only **two racks at 12.5 Ml/d each**, so losing one
+halves the works immediately.
+
+This is the fragility contrast. Estuary and Example both have full standby cover
+on their pumps, so on paper both look well provided for. But Estuary's treatment
+core has no spare granularity at all: a single rack failure is a 50% hit, where
+Example's worst single filter failure is 20%. Redundancy on the pumps tells you
+very little about resilience overall.
+
+### Hilltop WTW — the hidden single point of failure
+
+Groundwater is clean enough to skip clarification and filtration: three
+boreholes at 5 Ml/d, one GAC vessel for polishing, chlorination.
+
+The instructive part is that **single GAC vessel**. It is not flagged critical —
+it uses the ordinary "shares the load" rule. But it is alone in its stage, so
+taking it out drops that stage to zero and the works reads 0 Ml/d anyway.
+
+Two different rules, same outcome. A site can have a single point of failure
+without anyone having labelled it as one, and the stage maths surfaces it
+either way.
+
+### Comparisons worth trying
+
+| Try this | Why it is interesting |
+| --- | --- |
+| One membrane rack out at Estuary, then one filter out at Example | Estuary loses 12.5 of 25, Example 20 of 100. The bigger absolute loss is far less serious |
+| UV out at Example, then at Moorland | 96/100 against 45/60 — same rule, different configuration |
+| The single GAC vessel out at Hilltop | Reads 0 without ever having been marked critical |
+| One GAC vessel out at Example, then a second | Nothing, then a drop to 50 — spare cover being used up |
 
 ## Checked behaviour
 
