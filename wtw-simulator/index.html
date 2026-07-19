@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3d5c">
+<title>Works Capacity Simulator</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ======================= TOP BAR ======================= -->
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo" aria-hidden="true">◈</span>
+    <div>
+      <select id="works-select" class="works-select" aria-label="Choose works"></select>
+      <div id="region-title" class="works-title" hidden>Regional overview</div>
+      <div class="topbar-sub">Capacity Simulator</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="clock" class="clock"></span>
+  </div>
+</header>
+
+<!-- Mode switcher: the whole app has three screens. -->
+<nav class="modes" role="tablist">
+  <button class="mode-btn" data-mode="region" role="tab">Region</button>
+  <button class="mode-btn is-active" data-mode="works" role="tab">This works</button>
+  <button class="mode-btn" data-mode="admin" role="tab">Setup</button>
+</nav>
+
+<main>
+
+<!-- =========================================================================
+     SCREEN 1: REGIONAL OVERVIEW
+     ========================================================================= -->
+<div id="mode-region" hidden>
+
+  <section class="capacity-panel" id="region-panel">
+    <div class="gauge-wrap">
+      <svg class="gauge" viewBox="0 0 200 116" role="img" aria-labelledby="region-gauge-label">
+        <title id="region-gauge-label">Total regional capacity</title>
+        <path class="gauge-track" fill="none" d="M 16 100 A 84 84 0 0 1 184 100" />
+        <path class="gauge-fill" id="region-gauge-fill" fill="none" d="M 16 100 A 84 84 0 0 1 184 100" />
+      </svg>
+      <div class="gauge-readout">
+        <div class="gauge-number">
+          <span id="region-now">0</span><span class="gauge-of">/ <span id="region-baseline">0</span></span>
+        </div>
+        <div class="gauge-units">Ml/d across the region</div>
+      </div>
+    </div>
+
+    <div class="capacity-detail">
+      <div class="status-pill" id="region-pill">All works at full capacity</div>
+      <p class="capacity-reason" id="region-reason"></p>
+      <div class="capacity-figures">
+        <div class="figure">
+          <span class="figure-value" id="region-lost">0</span>
+          <span class="figure-label">Ml/d lost</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="region-percent">100%</span>
+          <span class="figure-label">of baseline</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="region-sites-affected">0</span>
+          <span class="figure-label">works affected</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="region-assets-out">0</span>
+          <span class="figure-label">assets out</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="section-title">Every works right now</h2>
+  <p class="panel-help">Worst affected first. Tap a works to open it.</p>
+  <div id="region-sites" class="region-sites"></div>
+
+  <h2 class="section-title">Production lost</h2>
+  <div class="panel-actions">
+    <div class="period-picker" id="period-picker">
+      <button class="period-btn" data-days="7">Last 7 days</button>
+      <button class="period-btn is-active" data-days="30">Last 30 days</button>
+      <button class="period-btn" data-days="90">Last 90 days</button>
+      <button class="period-btn" data-days="0">All time</button>
+    </div>
+  </div>
+  <div id="region-history"></div>
+
+  <div class="panel-actions">
+    <button class="btn btn-ghost" id="btn-export-region">Export regional summary to CSV</button>
+  </div>
+</div>
+
+
+<!-- =========================================================================
+     SCREEN 2: THE OPERATOR VIEW (one works)
+     ========================================================================= -->
+<div id="mode-works">
+
+  <section class="capacity-panel" id="capacity-panel">
+    <div class="gauge-wrap">
+      <svg class="gauge" viewBox="0 0 200 116" role="img" aria-labelledby="gauge-label">
+        <title id="gauge-label">Current works capacity</title>
+        <!-- fill="none" is set here as well as in the CSS so the arc still
+             draws as a line, not a solid blob, if the stylesheet is missing. -->
+        <path class="gauge-track" fill="none" d="M 16 100 A 84 84 0 0 1 184 100" />
+        <path class="gauge-fill" id="gauge-fill" fill="none" d="M 16 100 A 84 84 0 0 1 184 100" />
+      </svg>
+      <div class="gauge-readout">
+        <div class="gauge-number">
+          <span id="capacity-now">100</span><span class="gauge-of">/ <span id="capacity-baseline">100</span></span>
+        </div>
+        <div class="gauge-units">Ml/d</div>
+      </div>
+    </div>
+
+    <div class="capacity-detail">
+      <div class="status-pill" id="status-pill">Full capacity</div>
+      <p class="capacity-reason" id="capacity-reason">All stages have enough capacity.</p>
+      <div class="capacity-figures">
+        <div class="figure">
+          <span class="figure-value" id="figure-lost">0</span>
+          <span class="figure-label">Ml/d lost</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="figure-percent">100%</span>
+          <span class="figure-label">of baseline</span>
+        </div>
+        <div class="figure">
+          <span class="figure-value" id="figure-out">0</span>
+          <span class="figure-label">assets out</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="out-banner" class="out-banner" hidden>
+    <h2 class="out-banner-title">Currently out of service</h2>
+    <div id="out-list" class="out-list"></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab is-active" data-tab="assets" role="tab">Assets</button>
+    <button class="tab" data-tab="stages" role="tab">Capacity breakdown</button>
+    <button class="tab" data-tab="history" role="tab">Outage history</button>
+  </nav>
+
+  <section class="panel" id="tab-assets">
+    <div class="panel-actions">
+      <button class="btn btn-ghost" id="btn-all-back">Put all assets back in service</button>
+    </div>
+    <div id="asset-groups"></div>
+  </section>
+
+  <section class="panel" id="tab-stages" hidden>
+    <p class="panel-help">
+      Water can only move through the works as fast as the tightest stage allows.
+      The stage in red is the one holding capacity back.
+    </p>
+    <div id="stage-list" class="stage-list"></div>
+  </section>
+
+  <section class="panel" id="tab-history" hidden>
+    <div class="panel-actions">
+      <button class="btn btn-ghost" id="btn-export">Export all works to CSV</button>
+      <button class="btn btn-ghost btn-danger-ghost" id="btn-reset">Reset to sample data</button>
+    </div>
+    <div id="history-list"></div>
+  </section>
+</div>
+
+
+<!-- =========================================================================
+     SCREEN 3: SETUP (the administrator interface)
+     ========================================================================= -->
+<div id="mode-admin" hidden>
+
+  <div class="admin-warning">
+    <strong>Setup changes the plant model.</strong>
+    Anything altered here changes the capacity figures operators rely on.
+  </div>
+
+  <!-- ---- all works in the region ---- -->
+  <section class="admin-card">
+    <h2 class="section-title">Works in this region</h2>
+    <div id="admin-works-list" class="admin-works-list"></div>
+    <div class="panel-actions">
+      <button class="btn btn-ghost" id="btn-add-works">Add a works</button>
+    </div>
+  </section>
+
+  <!-- ---- the works being edited ---- -->
+  <section class="admin-card">
+    <h2 class="section-title">Editing <span id="admin-editing-name"></span></h2>
+
+    <div class="admin-fields">
+      <div class="admin-field">
+        <label class="field-label" for="admin-name">Works name</label>
+        <input type="text" id="admin-name" class="input">
+      </div>
+      <div class="admin-field">
+        <label class="field-label" for="admin-baseline">Baseline capacity (Ml/d)</label>
+        <input type="number" id="admin-baseline" class="input" min="0" step="0.1" inputmode="decimal">
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn btn-primary" id="btn-save-works">Save works details</button>
+    </div>
+  </section>
+
+  <!-- ---- checks ---- -->
+  <section class="admin-card">
+    <h2 class="section-title">Checks</h2>
+    <p class="panel-help">Problems found in this works' setup.</p>
+    <div id="admin-checks"></div>
+  </section>
+
+  <!-- ---- stages ---- -->
+  <section class="admin-card">
+    <h2 class="section-title">Treatment stages</h2>
+    <p class="panel-help">
+      List them in the order water flows through the works. Capacity is set by
+      the tightest stage, so every stage needs the assets that belong to it.
+    </p>
+    <div id="admin-stages"></div>
+    <div class="panel-actions">
+      <button class="btn btn-ghost" id="btn-add-stage">Add a stage</button>
+    </div>
+  </section>
+
+  <!-- ---- assets ---- -->
+  <section class="admin-card">
+    <h2 class="section-title">Assets</h2>
+    <div id="admin-assets"></div>
+    <div class="panel-actions">
+      <button class="btn btn-ghost" id="btn-add-asset">Add an asset</button>
+    </div>
+  </section>
+
+  <!-- ---- backup ---- -->
+  <section class="admin-card">
+    <h2 class="section-title">Backup and transfer</h2>
+    <p class="panel-help">
+      There is no server, so each device keeps its own copy. Save the setup to a
+      file here and load it on another tablet to copy it across.
+    </p>
+    <div class="panel-actions">
+      <button class="btn btn-ghost" id="btn-export-config">Save setup to a file</button>
+      <button class="btn btn-ghost" id="btn-import-config">Load setup from a file</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+    </div>
+  </section>
+</div>
+
+</main>
+
+
+<!-- ======================= LOG OUTAGE DIALOG ======================= -->
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <header class="modal-head">
+      <h2 id="modal-title">Take out of service</h2>
+      <div class="modal-asset" id="modal-asset-name"></div>
+    </header>
+
+    <div class="modal-body">
+      <div class="impact-preview" id="impact-preview">
+        <div class="impact-row">
+          <span class="impact-from" id="impact-from">100</span>
+          <span class="impact-arrow">&rarr;</span>
+          <span class="impact-to" id="impact-to">80</span>
+          <span class="impact-units">Ml/d</span>
+        </div>
+        <div class="impact-note" id="impact-note"></div>
+      </div>
+
+      <label class="field-label">Why is it coming out? <span class="req">required</span></label>
+      <div class="reason-grid" id="reason-grid"></div>
+
+      <label class="field-label" for="field-start">When did it come out?</label>
+      <div class="row-inline">
+        <input type="datetime-local" id="field-start" class="input">
+        <button type="button" class="btn btn-small" id="btn-now">Now</button>
+      </div>
+
+      <label class="field-label" for="field-expected">Expected back in service <span class="opt">optional</span></label>
+      <div class="row-inline">
+        <input type="datetime-local" id="field-expected" class="input">
+        <button type="button" class="btn btn-small" data-quick-hours="4">+4 h</button>
+        <button type="button" class="btn btn-small" data-quick-hours="24">+1 day</button>
+        <button type="button" class="btn btn-small" data-quick-hours="168">+1 week</button>
+      </div>
+
+      <label class="field-label" for="field-notes">Notes <span class="opt">optional</span></label>
+      <textarea id="field-notes" class="input" rows="2"
+                placeholder="Anything the next shift needs to know"></textarea>
+    </div>
+
+    <footer class="modal-foot">
+      <button class="btn btn-ghost btn-lg" id="btn-cancel">Cancel</button>
+      <button class="btn btn-danger btn-lg" id="btn-confirm">Take out of service</button>
+    </footer>
+  </div>
+</div>
+
+
+<!-- ======================= ASSET EDITOR DIALOG (Setup) ======================= -->
+<div class="modal-backdrop" id="asset-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="asset-modal-title">
+    <header class="modal-head">
+      <h2 id="asset-modal-title">Asset</h2>
+      <div class="modal-asset" id="asset-modal-sub">Add an asset</div>
+    </header>
+
+    <div class="modal-body">
+      <label class="field-label" for="asset-field-name">Name <span class="req">required</span></label>
+      <input type="text" id="asset-field-name" class="input" placeholder="e.g. RGF 6">
+      <div class="spacer"></div>
+
+      <label class="field-label" for="asset-field-type">Type</label>
+      <input type="text" id="asset-field-type" class="input" list="asset-type-list">
+      <datalist id="asset-type-list"></datalist>
+      <div class="spacer"></div>
+
+      <label class="field-label" for="asset-field-stage">Which stage is it in?</label>
+      <select id="asset-field-stage" class="input"></select>
+      <div class="spacer"></div>
+
+      <label class="field-label" for="asset-field-capacity">What is it rated at? (Ml/d)</label>
+      <input type="number" id="asset-field-capacity" class="input" min="0" step="0.1" inputmode="decimal">
+      <div class="spacer"></div>
+
+      <label class="checkbox-row" for="asset-field-standby">
+        <input type="checkbox" id="asset-field-standby">
+        <span>This is a standby unit rather than a duty unit</span>
+      </label>
+      <p class="field-hint">
+        For information only. Standby cover is worked out from the stage totals,
+        so ticking this does not change the capacity figures.
+      </p>
+
+      <label class="field-label">What happens when it goes out of service?</label>
+      <div class="rule-choices" id="asset-rule-choices">
+        <label class="rule-choice">
+          <input type="radio" name="asset-rule" value="share_of_stage">
+          <span><strong>Its capacity comes off its stage</strong>
+          <small>Normal case. Use for anything running in parallel: filters,
+          clarifiers, pumps, GAC vessels.</small></span>
+        </label>
+        <label class="rule-choice">
+          <input type="radio" name="asset-rule" value="limit_works">
+          <span><strong>The works is held at a set figure</strong>
+          <small>Partial loss. For example UV out means running at a reduced
+          flow.</small></span>
+        </label>
+        <label class="rule-choice">
+          <input type="radio" name="asset-rule" value="stop_works">
+          <span><strong>Production stops completely</strong>
+          <small>Critical. For example no chlorine dosing means no water can be
+          made.</small></span>
+        </label>
+      </div>
+
+      <div id="asset-limit-row" hidden>
+        <label class="field-label" for="asset-field-limit">
+          Hold the works at (Ml/d) <span class="req">required</span>
+        </label>
+        <input type="number" id="asset-field-limit" class="input" min="0" step="0.1" inputmode="decimal">
+      </div>
+    </div>
+
+    <footer class="modal-foot">
+      <button class="btn btn-ghost btn-lg" id="asset-cancel">Cancel</button>
+      <button class="btn btn-primary btn-lg" id="asset-save">Save asset</button>
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<!-- Load order matters: rules, reporting and data first, then the store,
+     then the screens. -->
+<script src="js/rules.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/report.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

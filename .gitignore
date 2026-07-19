@@ -1,0 +1,19 @@
+# Local Claude Code settings - machine specific, not shared
+.claude/settings.local.json
+
+# OS clutter
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Node, if a build step is ever added
+node_modules/
+dist/
+build/
+npm-debug.log*
