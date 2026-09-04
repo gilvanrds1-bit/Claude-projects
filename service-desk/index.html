@@ -145,7 +145,7 @@
       <div>
         <div class="field">
           <span style="display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
-            Business units impacted (1–10) *
+            Business units impacted (1–4) *
           </span>
           <div class="unit-grid" id="t-units"></div>
         </div>
@@ -237,16 +237,16 @@
   <div class="panel">
     <header>
       <h2>Reference data</h2>
-      <span class="hint">the 22 systems and their codes, 10 business units, and the answer code list</span>
+      <span class="hint">the 22 systems and their codes, the 4 business units, and the answer code list</span>
       <span class="spacer"></span>
       <button class="btn primary" id="ref-save">Save reference data</button>
     </header>
     <p class="field-hint">
       The systems and their configuration item codes are the ones from the configuration item
       sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
-      them here when you have them. The business units are numbered rather than named, because
-      numbers are what you gave; name them here and every chart follows. The answer codes are a
-      starter list — replace them with yours.
+      them here when you have them. The four business units are named as they are on the sheet —
+      1 to 4 — so give them words here if you would rather read them that way. The answer codes
+      are a starter list; replace them with yours.
       A code identifies its system, so two systems cannot share one; a ticket whose code differs
       from the one on record is flagged, never blocked. Changes are saved in this browser — use
       the Data tab to export them for a colleague.
@@ -259,7 +259,7 @@
   </div>
 
   <div class="panel">
-    <header><h3>Business units (1–10)</h3></header>
+    <header><h3>Business units (1–4)</h3></header>
     <div class="scroll-x" id="ref-units"></div>
   </div>
 

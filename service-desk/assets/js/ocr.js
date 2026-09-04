@@ -414,9 +414,10 @@ window.OCR = (function () {
       if (buLine) units = parseUnitList(buLine.replace(/business\s*units?/ig, ''), config.businessUnits);
     }
     if (!units.length) units = parseUnitList(whole, config.businessUnits).filter(function (n) {
-      /* only accept name matches from free text, never bare numbers */
+      /* only accept name matches from free text, never bare numbers — a
+         unit named just "3" is therefore never picked out of prose */
       var u = config.businessUnits.filter(function (x) { return Number(x.no) === n; })[0];
-      return u && tokenScore(u.name, whole) >= 0.75;
+      return u && unitNameMatches(u.name, whole);
     });
     if (units.length) set('businessUnits', units, pairs.businessUnits ? 'read from a labelled field' : 'matched unit names in the text');
 

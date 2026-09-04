@@ -148,7 +148,7 @@ main { padding: 20px; max-width: 1440px; margin: 0 auto; }
 .panel > header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .panel > header .hint { color: var(--text-muted); font-size: 12.5px; }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
 

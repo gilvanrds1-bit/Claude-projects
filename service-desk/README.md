@@ -10,7 +10,7 @@ Every ticket captures the five things you asked for:
 | **System number** | 1–22 | numbered list, fixed |
 | **System name** | 22 names | travels with the number |
 | **Configuration item code** | one per system | belongs to the system, so the form fills it in — `CA-1` for Castor, `SH-1` for Sham |
-| **Business units impacted** | 1–10 | a ticket can hit several at once |
+| **Business units impacted** | 1–4 | a ticket can hit several at once |
 | **Answer code** | 4 digits | the resolution code, with a meaning attached |
 
 Tickets are entered by hand **or by photograph** — point a phone at the paper ticket and the
@@ -84,8 +84,9 @@ It will not invent a value. A field it cannot read is flagged, and the ticket st
 using if you want the highest hit rate.
 
 ### Reference data
-Your 22 systems, 10 business units and the answer code list, all editable in place. **Replace
-the placeholder names with your own** — see the note below.
+Your 22 systems and their codes, the 4 business units and the answer code list, all editable
+in place. Systems and business units are real; the answer codes are still a starter list — see
+the note below.
 
 ### Data
 CSV export of whatever the dashboard is currently showing, a full JSON backup (tickets plus
@@ -100,10 +101,10 @@ configuration item sheet. Systems 15–22 (Acubens, Acamar, Cheleb, Capella, Mar
 Pluto and P2132-5) have **no code recorded yet** — the app handles that: it does not ask for
 one, and it will not invent one. Add them when you have them.
 
-The 10 business units carry no names — you gave them as numbers 1–10, so that is what they
-say. Nothing there is invented. Name them and every chart, filter and export follows; until
-then the parser identifies them by number alone, which is why a generic name like "Business
-unit 4" is never matched on the words "business" or "unit".
+The four business units are named as they appear on the sheet — `1`, `2`, `3`, `4`. Give them
+words on the Reference data tab and every chart, filter and export follows. Until then the
+parser identifies them by number alone: a unit whose name is just a digit is never matched
+against prose, so a stray "3" in an issue description cannot tick a box.
 
 The **answer codes are still placeholders** — a starter list with plausible meanings, there so
 the code list is not empty. Replace it with yours. Two ways to change any of this:

@@ -157,7 +157,7 @@ main { padding: 20px; max-width: 1440px; margin: 0 auto; }
 .panel > header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .panel > header .hint { color: var(--text-muted); font-size: 12.5px; }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
 
@@ -508,7 +508,7 @@ footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px;
       <div>
         <div class="field">
           <span style="display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
-            Business units impacted (1–10) *
+            Business units impacted (1–4) *
           </span>
           <div class="unit-grid" id="t-units"></div>
         </div>
@@ -600,16 +600,16 @@ footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px;
   <div class="panel">
     <header>
       <h2>Reference data</h2>
-      <span class="hint">the 22 systems and their codes, 10 business units, and the answer code list</span>
+      <span class="hint">the 22 systems and their codes, the 4 business units, and the answer code list</span>
       <span class="spacer"></span>
       <button class="btn primary" id="ref-save">Save reference data</button>
     </header>
     <p class="field-hint">
       The systems and their configuration item codes are the ones from the configuration item
       sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
-      them here when you have them. The business units are numbered rather than named, because
-      numbers are what you gave; name them here and every chart follows. The answer codes are a
-      starter list — replace them with yours.
+      them here when you have them. The four business units are named as they are on the sheet —
+      1 to 4 — so give them words here if you would rather read them that way. The answer codes
+      are a starter list; replace them with yours.
       A code identifies its system, so two systems cannot share one; a ticket whose code differs
       from the one on record is flagged, never blocked. Changes are saved in this browser — use
       the Data tab to export them for a colleague.
@@ -622,7 +622,7 @@ footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px;
   </div>
 
   <div class="panel">
-    <header><h3>Business units (1–10)</h3></header>
+    <header><h3>Business units (1–4)</h3></header>
     <div class="scroll-x" id="ref-units"></div>
   </div>
 
@@ -729,21 +729,14 @@ window.SDP_DEFAULT_CONFIG = {
     { no: 22, name: 'P2132-5',   code: ''      }
   ],
 
-  /* The 10 business units. A ticket can impact more than one.
-     You gave these as numbers 1-10 and no names, so that is exactly what
-     they say — nothing here is invented. Put your own names in and every
-     chart, filter and export picks them up. */
+  /* The four business units. They are named exactly as they appear on
+     the sheet — "1" to "4" — so a chart axis reads 1, 2, 3, 4. Give them
+     words here and every chart, filter and export follows. */
   businessUnits: [
-    { no:  1, name: 'Business unit 1' , short: 'BU 1'  },
-    { no:  2, name: 'Business unit 2' , short: 'BU 2'  },
-    { no:  3, name: 'Business unit 3' , short: 'BU 3'  },
-    { no:  4, name: 'Business unit 4' , short: 'BU 4'  },
-    { no:  5, name: 'Business unit 5' , short: 'BU 5'  },
-    { no:  6, name: 'Business unit 6' , short: 'BU 6'  },
-    { no:  7, name: 'Business unit 7' , short: 'BU 7'  },
-    { no:  8, name: 'Business unit 8' , short: 'BU 8'  },
-    { no:  9, name: 'Business unit 9' , short: 'BU 9'  },
-    { no: 10, name: 'Business unit 10', short: 'BU 10' }
+    { no: 1, name: '1', short: '1' },
+    { no: 2, name: '2', short: '2' },
+    { no: 3, name: '3', short: '3' },
+    { no: 4, name: '4', short: '4' }
   ],
 
   /* Four digit answer / resolution codes. */
@@ -1424,12 +1417,17 @@ window.Charts = (function () {
     cells.forEach(function (r) { r.forEach(function (v) { max = Math.max(max, v); }); });
     if (!max) return empty(host, opts.emptyText);
 
-    var labelW = 170, headH = 82, gap = 3;
-    /* the rotated column headings run up and to the right of the last cell */
-    var rightPad = 92;
+    var labelW = 170, gap = 3;
+    /* Short headings sit upright; only long ones need turning, and a
+       turned heading runs up and to the right of the last column. */
+    var longest = Math.max.apply(null, cols.map(function (c) { return (c.short || '').length; }));
+    var turned = longest > 3;
+    var headH = turned ? 82 : 32;
+    var rightPad = turned ? 92 : 6;
+
     /* grow the cells to use the width available, within sensible bounds */
     var avail = (host.clientWidth || 640) - labelW - rightPad - 2;
-    var cell = Math.max(28, Math.min(48, Math.floor(avail / cols.length) - gap));
+    var cell = Math.max(28, Math.min(56, Math.floor(avail / cols.length) - gap));
     var width = labelW + cols.length * (cell + gap) + rightPad;
     var height = headH + rows.length * (cell + gap);
 
@@ -1442,11 +1440,10 @@ window.Charts = (function () {
 
     cols.forEach(function (c, j) {
       var cx = labelW + j * (cell + gap) + cell / 2;
-      var t = el('text', {
-        x: cx, y: headH - 10, class: 'viz-axis',
-        transform: 'rotate(-45 ' + cx + ' ' + (headH - 10) + ')', 'text-anchor': 'start'
-      }, svg);
-      t.textContent = c.short;
+      var cy = headH - 10;
+      var attrs = { x: cx, y: cy, class: 'viz-axis', 'text-anchor': turned ? 'start' : 'middle' };
+      if (turned) attrs.transform = 'rotate(-45 ' + cx + ' ' + cy + ')';
+      el('text', attrs, svg).textContent = c.short;
     });
 
     rows.forEach(function (r, i) {
@@ -1917,9 +1914,10 @@ window.OCR = (function () {
       if (buLine) units = parseUnitList(buLine.replace(/business\s*units?/ig, ''), config.businessUnits);
     }
     if (!units.length) units = parseUnitList(whole, config.businessUnits).filter(function (n) {
-      /* only accept name matches from free text, never bare numbers */
+      /* only accept name matches from free text, never bare numbers — a
+         unit named just "3" is therefore never picked out of prose */
       var u = config.businessUnits.filter(function (x) { return Number(x.no) === n; })[0];
-      return u && tokenScore(u.name, whole) >= 0.75;
+      return u && unitNameMatches(u.name, whole);
     });
     if (units.length) set('businessUnits', units, pairs.businessUnits ? 'read from a labelled field' : 'matched unit names in the text');
 

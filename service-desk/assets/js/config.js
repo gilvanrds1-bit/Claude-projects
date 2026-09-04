@@ -41,21 +41,14 @@ window.SDP_DEFAULT_CONFIG = {
     { no: 22, name: 'P2132-5',   code: ''      }
   ],
 
-  /* The 10 business units. A ticket can impact more than one.
-     You gave these as numbers 1-10 and no names, so that is exactly what
-     they say — nothing here is invented. Put your own names in and every
-     chart, filter and export picks them up. */
+  /* The four business units. They are named exactly as they appear on
+     the sheet — "1" to "4" — so a chart axis reads 1, 2, 3, 4. Give them
+     words here and every chart, filter and export follows. */
   businessUnits: [
-    { no:  1, name: 'Business unit 1' , short: 'BU 1'  },
-    { no:  2, name: 'Business unit 2' , short: 'BU 2'  },
-    { no:  3, name: 'Business unit 3' , short: 'BU 3'  },
-    { no:  4, name: 'Business unit 4' , short: 'BU 4'  },
-    { no:  5, name: 'Business unit 5' , short: 'BU 5'  },
-    { no:  6, name: 'Business unit 6' , short: 'BU 6'  },
-    { no:  7, name: 'Business unit 7' , short: 'BU 7'  },
-    { no:  8, name: 'Business unit 8' , short: 'BU 8'  },
-    { no:  9, name: 'Business unit 9' , short: 'BU 9'  },
-    { no: 10, name: 'Business unit 10', short: 'BU 10' }
+    { no: 1, name: '1', short: '1' },
+    { no: 2, name: '2', short: '2' },
+    { no: 3, name: '3', short: '3' },
+    { no: 4, name: '4', short: '4' }
   ],
 
   /* Four digit answer / resolution codes. */
