@@ -41,18 +41,21 @@ window.SDP_DEFAULT_CONFIG = {
     { no: 22, name: 'P2132-5',   code: ''      }
   ],
 
-  /* The 10 business units. A ticket can impact more than one. */
+  /* The 10 business units. A ticket can impact more than one.
+     You gave these as numbers 1-10 and no names, so that is exactly what
+     they say — nothing here is invented. Put your own names in and every
+     chart, filter and export picks them up. */
   businessUnits: [
-    { no: 1,  name: 'Customer Operations',     short: 'Cust Ops' },
-    { no: 2,  name: 'Field Operations',        short: 'Field Ops' },
-    { no: 3,  name: 'Water Production',        short: 'Production' },
-    { no: 4,  name: 'Wastewater',              short: 'Wastewater' },
-    { no: 5,  name: 'Asset Management',        short: 'Assets' },
-    { no: 6,  name: 'Finance',                 short: 'Finance' },
-    { no: 7,  name: 'People & HR',             short: 'HR' },
-    { no: 8,  name: 'IT & Digital',            short: 'IT' },
-    { no: 9,  name: 'Regulation & Compliance', short: 'Regulation' },
-    { no: 10, name: 'Commercial & Retail',     short: 'Commercial' }
+    { no:  1, name: 'Business unit 1' , short: 'BU 1'  },
+    { no:  2, name: 'Business unit 2' , short: 'BU 2'  },
+    { no:  3, name: 'Business unit 3' , short: 'BU 3'  },
+    { no:  4, name: 'Business unit 4' , short: 'BU 4'  },
+    { no:  5, name: 'Business unit 5' , short: 'BU 5'  },
+    { no:  6, name: 'Business unit 6' , short: 'BU 6'  },
+    { no:  7, name: 'Business unit 7' , short: 'BU 7'  },
+    { no:  8, name: 'Business unit 8' , short: 'BU 8'  },
+    { no:  9, name: 'Business unit 9' , short: 'BU 9'  },
+    { no: 10, name: 'Business unit 10', short: 'BU 10' }
   ],
 
   /* Four digit answer / resolution codes. */

@@ -99,6 +99,13 @@ window.Store = (function () {
     return u ? (u.short || u.name) : 'BU ' + no;
   }
 
+  /* "4 Field Ops", but just "BU 4" when the short name already carries
+     the number — no unit should read as "4 BU 4". */
+  function unitTag(no) {
+    var short = unitShort(no);
+    return new RegExp('(^|\\D)' + no + '(\\D|$)').test(short) ? short : no + ' ' + short;
+  }
+
   function answerLabel(code) {
     var a = answerByCode(code);
     return a ? a.code + ' — ' + a.label : String(code || '');
@@ -409,7 +416,7 @@ window.Store = (function () {
     getPrefs: getPrefs, setPref: setPref,
     systemByNo: systemByNo, unitByNo: unitByNo, answerByCode: answerByCode,
     systemLabel: systemLabel, unitLabel: unitLabel, unitShort: unitShort,
-    answerLabel: answerLabel, validateSystemId: validateSystemId,
+    answerLabel: answerLabel, unitTag: unitTag, validateSystemId: validateSystemId,
     nextRef: nextRef, addTicket: addTicket, addMany: addMany,
     updateTicket: updateTicket, deleteTicket: deleteTicket, clearTickets: clearTickets,
     all: all, byId: byId,

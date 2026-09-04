@@ -607,7 +607,9 @@ footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px;
     <p class="field-hint">
       The systems and their configuration item codes are the ones from the configuration item
       sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
-      them here when you have them. Business unit names and answer codes are still placeholders.
+      them here when you have them. The business units are numbered rather than named, because
+      numbers are what you gave; name them here and every chart follows. The answer codes are a
+      starter list — replace them with yours.
       A code identifies its system, so two systems cannot share one; a ticket whose code differs
       from the one on record is flagged, never blocked. Changes are saved in this browser — use
       the Data tab to export them for a colleague.
@@ -727,18 +729,21 @@ window.SDP_DEFAULT_CONFIG = {
     { no: 22, name: 'P2132-5',   code: ''      }
   ],
 
-  /* The 10 business units. A ticket can impact more than one. */
+  /* The 10 business units. A ticket can impact more than one.
+     You gave these as numbers 1-10 and no names, so that is exactly what
+     they say — nothing here is invented. Put your own names in and every
+     chart, filter and export picks them up. */
   businessUnits: [
-    { no: 1,  name: 'Customer Operations',     short: 'Cust Ops' },
-    { no: 2,  name: 'Field Operations',        short: 'Field Ops' },
-    { no: 3,  name: 'Water Production',        short: 'Production' },
-    { no: 4,  name: 'Wastewater',              short: 'Wastewater' },
-    { no: 5,  name: 'Asset Management',        short: 'Assets' },
-    { no: 6,  name: 'Finance',                 short: 'Finance' },
-    { no: 7,  name: 'People & HR',             short: 'HR' },
-    { no: 8,  name: 'IT & Digital',            short: 'IT' },
-    { no: 9,  name: 'Regulation & Compliance', short: 'Regulation' },
-    { no: 10, name: 'Commercial & Retail',     short: 'Commercial' }
+    { no:  1, name: 'Business unit 1' , short: 'BU 1'  },
+    { no:  2, name: 'Business unit 2' , short: 'BU 2'  },
+    { no:  3, name: 'Business unit 3' , short: 'BU 3'  },
+    { no:  4, name: 'Business unit 4' , short: 'BU 4'  },
+    { no:  5, name: 'Business unit 5' , short: 'BU 5'  },
+    { no:  6, name: 'Business unit 6' , short: 'BU 6'  },
+    { no:  7, name: 'Business unit 7' , short: 'BU 7'  },
+    { no:  8, name: 'Business unit 8' , short: 'BU 8'  },
+    { no:  9, name: 'Business unit 9' , short: 'BU 9'  },
+    { no: 10, name: 'Business unit 10', short: 'BU 10' }
   ],
 
   /* Four digit answer / resolution codes. */
@@ -872,6 +877,13 @@ window.Store = (function () {
   function unitShort(no) {
     var u = unitByNo(no);
     return u ? (u.short || u.name) : 'BU ' + no;
+  }
+
+  /* "4 Field Ops", but just "BU 4" when the short name already carries
+     the number — no unit should read as "4 BU 4". */
+  function unitTag(no) {
+    var short = unitShort(no);
+    return new RegExp('(^|\\D)' + no + '(\\D|$)').test(short) ? short : no + ' ' + short;
   }
 
   function answerLabel(code) {
@@ -1184,7 +1196,7 @@ window.Store = (function () {
     getPrefs: getPrefs, setPref: setPref,
     systemByNo: systemByNo, unitByNo: unitByNo, answerByCode: answerByCode,
     systemLabel: systemLabel, unitLabel: unitLabel, unitShort: unitShort,
-    answerLabel: answerLabel, validateSystemId: validateSystemId,
+    answerLabel: answerLabel, unitTag: unitTag, validateSystemId: validateSystemId,
     nextRef: nextRef, addTicket: addTicket, addMany: addMany,
     updateTicket: updateTicket, deleteTicket: deleteTicket, clearTickets: clearTickets,
     all: all, byId: byId,
@@ -1791,11 +1803,27 @@ window.OCR = (function () {
       n = Number(n);
       if (n >= 1 && n <= units.length + 90 && units.some(function (u) { return Number(u.no) === n; })) found[n] = true;
     });
-    /* named units */
+    /* named units — but only on words that actually distinguish one unit
+       from another. A unit still called "Business unit 4" is identified by
+       its number alone; matching on "business" or "unit" would tick every
+       box on the form. */
     units.forEach(function (u) {
-      if (tokenScore(u.name, v) >= 0.75 || (u.short && tokenScore(u.short, v) >= 0.9)) found[u.no] = true;
+      if (unitNameMatches(u.name, v)) found[u.no] = true;
     });
     return Object.keys(found).map(Number).sort(function (a, b) { return a - b; });
+  }
+
+  var UNIT_STOPWORDS = ['business', 'unit', 'units', 'area', 'areas',
+                        'department', 'dept', 'team', 'division', 'group'];
+
+  function unitNameMatches(name, text) {
+    var tokens = key(name).split(' ').filter(function (t) {
+      return t.length > 2 && UNIT_STOPWORDS.indexOf(t) === -1;
+    });
+    if (!tokens.length) return false;
+    var h = key(text);
+    var hit = tokens.filter(function (t) { return h.indexOf(t) !== -1; }).length;
+    return hit / tokens.length >= 0.75;
   }
 
   /**
@@ -2675,9 +2703,7 @@ window.Dashboard = (function () {
         '<div class="cap-fields">' +
           row('System', sys ? sys.no + '. ' + sys.name : f.systemNo, 'systemNo') +
           row('System id', f.systemId, 'systemId') +
-          row('Business units', (f.businessUnits || []).map(function (u) {
-            return u + ' ' + Store.unitShort(u);
-          }).join(', '), 'businessUnits') +
+          row('Business units', (f.businessUnits || []).map(Store.unitTag).join(', '), 'businessUnits') +
           row('Answer code', f.answerCode ? f.answerCode + (ans ? ' — ' + ans.label : ' (not in the code list)') : '', 'answerCode') +
           (f.priority ? row('Priority', f.priority, 'priority') : '') +
           (f.summary ? row('Summary', f.summary, 'summary') : '') +

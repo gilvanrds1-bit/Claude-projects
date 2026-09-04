@@ -336,9 +336,7 @@
         '<div class="cap-fields">' +
           row('System', sys ? sys.no + '. ' + sys.name : f.systemNo, 'systemNo') +
           row('System id', f.systemId, 'systemId') +
-          row('Business units', (f.businessUnits || []).map(function (u) {
-            return u + ' ' + Store.unitShort(u);
-          }).join(', '), 'businessUnits') +
+          row('Business units', (f.businessUnits || []).map(Store.unitTag).join(', '), 'businessUnits') +
           row('Answer code', f.answerCode ? f.answerCode + (ans ? ' — ' + ans.label : ' (not in the code list)') : '', 'answerCode') +
           (f.priority ? row('Priority', f.priority, 'priority') : '') +
           (f.summary ? row('Summary', f.summary, 'summary') : '') +

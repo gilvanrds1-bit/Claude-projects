@@ -100,8 +100,13 @@ configuration item sheet. Systems 15–22 (Acubens, Acamar, Cheleb, Capella, Mar
 Pluto and P2132-5) have **no code recorded yet** — the app handles that: it does not ask for
 one, and it will not invent one. Add them when you have them.
 
-The 10 business unit names and the answer codes are still **placeholders**. Two ways to
-replace them:
+The 10 business units carry no names — you gave them as numbers 1–10, so that is what they
+say. Nothing there is invented. Name them and every chart, filter and export follows; until
+then the parser identifies them by number alone, which is why a generic name like "Business
+unit 4" is never matched on the words "business" or "unit".
+
+The **answer codes are still placeholders** — a starter list with plausible meanings, there so
+the code list is not empty. Replace it with yours. Two ways to change any of this:
 
 - **Quickest:** the *Reference data* tab, then *Save reference data*. Stored in your browser.
 - **For everyone:** edit `assets/js/config.js` and commit it. That changes the defaults every

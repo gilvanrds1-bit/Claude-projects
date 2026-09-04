@@ -63,7 +63,7 @@ Issue: Depot link down since O6:00
 run('unlabelled scrawl', `
 Rastaban
 RD-1
-impacts Field Operations and Asset Management
+business units 2 and 5
 closed 4010
 `, {
   systemNo: 6, systemId: 'RD-1', businessUnits: [2, 5], answerCode: '4010'
@@ -136,13 +136,25 @@ Answer Code: 7777
 `, { answerCode: '7777' });
 check('unknown code noted', r10.notes.some(n => /not in the code list/.test(n)), true);
 
-/* 11. Named business units only, no numbers. */
-run('business units by name', `
+/* 11. Generic unit names must not tick every box. */
+const r11 = run('generic unit names match on the number only', `
 System No: 13
 Item Code: EA-1
-Business Units: People & HR, Finance
+Business Units: 6 and 7
 Answer Code: 1002
 `, { businessUnits: [6, 7] });
+check('no runaway unit match', r11.fields.businessUnits.length, 2);
+
+/* 11b. Once units are named, the names are matched too. */
+const named = { businessUnits: [
+  { no: 1, name: 'Customer Operations', short: 'Cust Ops' },
+  { no: 2, name: 'Field Operations', short: 'Field Ops' },
+  { no: 3, name: 'Finance', short: 'Finance' }
+]};
+check('named units matched by name',
+  OCR._internals.parseUnitList('Field Operations and Finance', named.businessUnits), [2, 3]);
+check('unnamed units not matched by the word "unit"',
+  OCR._internals.parseUnitList('business units', CONFIG.businessUnits), []);
 
 /* 12. A system with no code recorded must still be loggable. */
 const r12 = run('system with no code recorded', `
