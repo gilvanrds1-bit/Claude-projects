@@ -9,7 +9,7 @@ Every ticket captures the five things you asked for:
 |---|---|---|
 | **System number** | 1–22 | numbered list, fixed |
 | **System name** | 22 names | travels with the number |
-| **System id** | varies by system | each system has its own id shape, checked against a per-system pattern |
+| **Configuration item code** | one per system | belongs to the system, so the form fills it in — `CA-1` for Castor, `SH-1` for Sham |
 | **Business units impacted** | 1–10 | a ticket can hit several at once |
 | **Answer code** | 4 digits | the resolution code, with a meaning attached |
 
@@ -51,9 +51,10 @@ Every bar and every cell is clickable and sets the filter, so "GIS Network Mappi
 "Finance" is two clicks away.
 
 ### Log a ticket
-The manual form. The system id field knows the shape each system uses and warns (never
-blocks) when what you type does not match. Business units are tick boxes, answer codes are
-grouped by category.
+The manual form. Choosing a system fills in its configuration item code, so that field is
+normally a glance rather than a keystroke; override it and the app warns (never blocks) that
+it differs from the code on record. Business units are tick boxes, answer codes are grouped
+by category.
 
 ### Photo capture
 Take a photo, choose image files, drag them in, or paste from the clipboard — several at a
@@ -66,9 +67,16 @@ time, each photo becoming one ticket. What happens next:
    in a review card showing what was found, where each value came from, and the photo itself
 
 The reader picks up these labels, with or without a colon: **System No**, **System Name**,
-**System ID**, **Business Units**, **Answer Code**, **Priority**, **Status**, **Reported by**,
-**Issue**, **Date**. Failing a label it falls back to matching your system names, spotting an
-id that fits a system's pattern, and finding a four digit code it recognises.
+**System ID** (also **Configuration Item**, **Item Code**, **CI**), **Business Units**,
+**Answer Code**, **Priority**, **Status**, **Reported by**, **Issue**, **Date**. Failing a
+label it falls back to matching your system names, finding a configuration item code it
+recognises, and finding a four digit answer code it recognises.
+
+Because the item code identifies the system, reading `RD-1` off a photo is enough to know the
+ticket is against Rastaban — and knowing the system supplies the code when the photo lost it.
+Look-alike characters are allowed for (`lZ-l` reads as `IZ-1`) but only within the pairs a
+camera actually confuses, and only when one code matches: `NN-1` (Nunki) and `NN-2` (Nash) can
+never be mistaken for each other, and `PO-1` (Polaris) and `PD-1` (Phad) stay distinct.
 
 It will not invent a value. A field it cannot read is flagged, and the ticket stops for a human.
 
@@ -87,16 +95,22 @@ reference data), import, sample data for a look around, and the delete buttons.
 
 ## Before you use it for real
 
-The 22 system names, the 10 business unit names and the answer codes that ship with the app
-are **placeholders** — you had not given me yours. Two ways to replace them:
+The 22 systems and their configuration item codes are the real ones, taken from the
+configuration item sheet. Systems 15–22 (Acubens, Acamar, Cheleb, Capella, Mars, Neptune,
+Pluto and P2132-5) have **no code recorded yet** — the app handles that: it does not ask for
+one, and it will not invent one. Add them when you have them.
+
+The 10 business unit names and the answer codes are still **placeholders**. Two ways to
+replace them:
 
 - **Quickest:** the *Reference data* tab, then *Save reference data*. Stored in your browser.
 - **For everyone:** edit `assets/js/config.js` and commit it. That changes the defaults every
   new browser sees.
 
-The system id patterns are regular expressions. `^FS-?\d{5,6}$` means "FS, an optional
-hyphen, then five or six digits". A ticket whose id does not match is flagged with a `?`, never
-rejected — the desk keeps moving.
+Codes are compared with case and punctuation ignored, so `ca-1`, `CA 1` and `CA1` all count as
+Castor. Two systems cannot share a code — saving is refused if you try, because that would make
+a photographed code ambiguous. A ticket whose code differs from the one on record is flagged
+with a `?`, never rejected: the desk keeps moving.
 
 ---
 
@@ -118,7 +132,7 @@ API is a contained job.
 ```
 index.html                     the whole app
 assets/css/app.css             one stylesheet, light and dark
-assets/js/config.js            systems, business units, answer codes  ← edit this
+assets/js/config.js            systems and codes, business units, answer codes  ← edit this
 assets/js/store.js             persistence, ticket CRUD, aggregations
 assets/js/charts.js            dependency-free SVG bar, line and heatmap charts
 assets/js/ocr.js               photo pre-processing, recognition, field parsing
@@ -137,9 +151,10 @@ test/parser.test.js            tests for the photo parser
 node test/parser.test.js
 ```
 
-29 assertions over ten realistic tickets: clean printed forms, phone-photo noise where `O`
-becomes `0` and `l` becomes `1`, unlabelled scrawl, missing fields, a year that must not be
-mistaken for an answer code, and an id that disagrees with the system number written beside it.
+44 assertions over fourteen realistic tickets: clean printed forms, phone-photo noise where `O`
+becomes `0` and `l` becomes `1`, unlabelled scrawl, a code standing in for the whole system,
+`NN-1` against `NN-2`, a system with no code recorded, missing fields, a year that must not be
+mistaken for an answer code, and a code that disagrees with the system number written beside it.
 
 ## Browser support
 

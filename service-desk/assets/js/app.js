@@ -97,10 +97,27 @@
     var no = $('#t-system').value;
     var s = no ? Store.systemByNo(no) : null;
     var hint = $('#t-system-id-hint');
-    if (!s) { hint.textContent = 'Pick a system first — every system numbers its ids differently.'; return; }
-    hint.textContent = 'System ' + s.no + ' ids look like ' + (s.idExample || s.idPrefix + '…') + '.';
     var input = $('#t-system-id');
-    if (!input.value && s.idPrefix) input.placeholder = s.idExample || s.idPrefix;
+
+    if (!s) {
+      hint.textContent = 'Choose a system and its code appears here.';
+      input.placeholder = '';
+      validateId();
+      return;
+    }
+
+    /* The code belongs to the system, so fill it in — but leave anything
+       the analyst typed themselves alone. */
+    var previous = input.getAttribute('data-auto');
+    if (!input.value || input.value === previous) {
+      input.value = s.code || '';
+      input.setAttribute('data-auto', s.code || '');
+    }
+
+    hint.textContent = s.code
+      ? 'Filled in from ' + s.name + '. Change it only if this ticket is about a different item.'
+      : 'No code is recorded for ' + s.name + ' yet — add one on the Reference data tab, or type it here.';
+    input.placeholder = s.code || 'e.g. CA-1';
     validateId();
   }
 
@@ -112,7 +129,8 @@
     var res = Store.validateSystemId(no, input.value);
     input.classList.toggle('is-warn', !res.ok);
     out.hidden = res.ok;
-    out.textContent = res.ok ? '' : 'That does not match the usual shape for this system (e.g. ' + res.expected + '). It will still be saved.';
+    out.textContent = res.ok ? '' : 'The code recorded for this system is ' + res.expected +
+      '. What you have typed will still be saved.';
   }
 
   function readForm() {
@@ -160,7 +178,8 @@
   function formErrors(data) {
     var errs = [];
     if (!data.systemNo) errs.push('Choose the system.');
-    if (!String(data.systemId).trim()) errs.push('Enter the system id.');
+    var sys = data.systemNo ? Store.systemByNo(data.systemNo) : null;
+    if (sys && sys.code && !String(data.systemId).trim()) errs.push('Enter the configuration item code.');
     if (!data.businessUnits.length) errs.push('Tick at least one impacted business unit.');
     if (!/^\d{4}$/.test(String(data.answerCode).trim())) errs.push('Enter the four digit answer code.');
     return errs;
@@ -422,15 +441,14 @@
     var cfg = Store.getConfig();
 
     $('#ref-systems').innerHTML =
-      '<table class="grid editable"><thead><tr><th>No</th><th>System name</th><th>Id prefix</th>' +
-      '<th>Id pattern (regex)</th><th>Example id</th></tr></thead><tbody>' +
+      '<table class="grid editable"><thead><tr><th>No</th><th>System name</th>' +
+      '<th>Configuration item code</th></tr></thead><tbody>' +
       cfg.systems.map(function (s, i) {
         return '<tr data-i="' + i + '">' +
           '<td class="num">' + s.no + '</td>' +
           '<td><input data-k="name" value="' + esc(s.name) + '"></td>' +
-          '<td><input data-k="idPrefix" class="short" value="' + esc(s.idPrefix || '') + '"></td>' +
-          '<td><input data-k="idPattern" class="mono" value="' + esc(s.idPattern || '') + '"></td>' +
-          '<td><input data-k="idExample" class="mono" value="' + esc(s.idExample || '') + '"></td>' +
+          '<td><input data-k="code" class="mono short" placeholder="none recorded" value="' +
+            esc(s.code || '') + '"></td>' +
           '</tr>';
       }).join('') + '</tbody></table>';
 
@@ -488,6 +506,15 @@
     var cfg = Store.getConfig();
     var bad = cfg.answerCodes.filter(function (a) { return !/^\d{4}$/.test(a.code); });
     if (bad.length) { toast('Answer codes must be four digits — check ' + bad[0].label, 'warning'); return; }
+
+    var seen = {}, clash = null;
+    cfg.systems.forEach(function (s) {
+      var k = Store.normCode(s.code);
+      if (!k) return;
+      if (seen[k]) clash = seen[k] + ' and ' + s.name + ' both use ' + s.code;
+      seen[k] = s.name;
+    });
+    if (clash) { toast('Two systems cannot share a code — ' + clash, 'warning'); return; }
     Store.saveConfig();
     refreshEverything();
     toast('Reference data saved');
@@ -628,9 +655,7 @@
       var r = Math.random();
       out.push({
         systemNo: sys.no,
-        systemId: (sys.idExample || sys.idPrefix + '-1000').replace(/\d+$/, function (d) {
-          return String(Number(d) + Math.floor(Math.random() * 400));
-        }),
+        systemId: sys.code || '',
         businessUnits: units.sort(function (a, b) { return a - b; }),
         answerCode: ans.code,
         priority: r < 0.05 ? 'P1' : r < 0.25 ? 'P2' : r < 0.8 ? 'P3' : 'P4',

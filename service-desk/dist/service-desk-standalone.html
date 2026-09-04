@@ -484,9 +484,9 @@ footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px;
         </label>
 
         <label class="field">
-          <span>System id *</span>
-          <input id="t-system-id" autocomplete="off" placeholder="e.g. FS-104233">
-          <span class="field-hint" id="t-system-id-hint">Pick a system first — every system numbers its ids differently.</span>
+          <span>Configuration item code</span>
+          <input id="t-system-id" autocomplete="off">
+          <span class="field-hint" id="t-system-id-hint">Choose a system and its code appears here.</span>
           <span class="field-warn" id="t-system-id-warn" hidden></span>
         </label>
 
@@ -600,14 +600,17 @@ footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px;
   <div class="panel">
     <header>
       <h2>Reference data</h2>
-      <span class="hint">your 22 systems, 10 business units and the answer code list</span>
+      <span class="hint">the 22 systems and their codes, 10 business units, and the answer code list</span>
       <span class="spacer"></span>
       <button class="btn primary" id="ref-save">Save reference data</button>
     </header>
     <p class="field-hint">
-      Replace the placeholder names with your own. The system id pattern is a regular expression used
-      to sanity-check what gets typed or read off a photo — a mismatch is flagged, never blocked.
-      Changes are saved in this browser; use the Data tab to export them for a colleague.
+      The systems and their configuration item codes are the ones from the configuration item
+      sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
+      them here when you have them. Business unit names and answer codes are still placeholders.
+      A code identifies its system, so two systems cannot share one; a ticket whose code differs
+      from the one on record is flagged, never blocked. Changes are saved in this browser — use
+      the Data tab to export them for a colleague.
     </p>
   </div>
 
@@ -694,33 +697,34 @@ window.SDP_DEFAULT_CONFIG = {
   version: 1,
   organisation: 'Service Desk',
 
-  /* The 22 systems. `no` is the system number (1-22) the desk quotes,
-     `idPrefix` / `idPattern` describe the shape of that system's own id,
-     which differs from system to system. Pattern is advisory: a ticket
-     whose id does not match is still accepted, it is just flagged. */
+  /* The 22 systems, as they appear on the configuration item sheet.
+     `code` is that system's configuration item code — it belongs to the
+     system, not to the ticket, so the ticket form fills it in for you.
+     Systems 15-22 have no code recorded yet; add them here or on the
+     Reference data tab and the app picks them up. */
   systems: [
-    { no: 1,  name: 'SAP ERP Finance',            idPrefix: 'FS',  idPattern: '^FS-?\\d{5,6}$',      idExample: 'FS-104233' },
-    { no: 2,  name: 'Maximo Asset Management',    idPrefix: 'MX',  idPattern: '^MX-?\\d{4,6}$',      idExample: 'MX-20481' },
-    { no: 3,  name: 'SCADA Telemetry',            idPrefix: 'SC',  idPattern: '^SC-?\\d{3,5}$',      idExample: 'SC-4471' },
-    { no: 4,  name: 'GIS Network Mapping',        idPrefix: 'GIS', idPattern: '^GIS-?\\d{4,6}$',     idExample: 'GIS-88120' },
-    { no: 5,  name: 'Customer Billing (CIS)',     idPrefix: 'CIS', idPattern: '^CIS-?\\d{6,8}$',     idExample: 'CIS-30044821' },
-    { no: 6,  name: 'Salesforce CRM',             idPrefix: 'SF',  idPattern: '^SF-?[A-Z0-9]{6,10}$',idExample: 'SF-A0K7B21' },
-    { no: 7,  name: 'ServiceNow ITSM',            idPrefix: 'SN',  idPattern: '^SN-?\\d{6,8}$',      idExample: 'SN-4410023' },
-    { no: 8,  name: 'Workforce Scheduling',       idPrefix: 'WS',  idPattern: '^WS-?\\d{4,6}$',      idExample: 'WS-71204' },
-    { no: 9,  name: 'Laboratory LIMS',            idPrefix: 'LB',  idPattern: '^LB-?\\d{5,7}$',      idExample: 'LB-220741' },
-    { no: 10, name: 'Water Quality Portal',       idPrefix: 'WQ',  idPattern: '^WQ-?\\d{4,6}$',      idExample: 'WQ-13350' },
-    { no: 11, name: 'Field Mobile App',           idPrefix: 'FM',  idPattern: '^FM-?\\d{4,6}$',      idExample: 'FM-60712' },
-    { no: 12, name: 'Document Management',        idPrefix: 'DM',  idPattern: '^DM-?\\d{5,7}$',      idExample: 'DM-880231' },
-    { no: 13, name: 'HR & Payroll',               idPrefix: 'HR',  idPattern: '^HR-?\\d{4,6}$',      idExample: 'HR-40910' },
-    { no: 14, name: 'Procurement Portal',         idPrefix: 'PR',  idPattern: '^PR-?\\d{5,7}$',      idExample: 'PR-201880' },
-    { no: 15, name: 'Data Warehouse & BI',        idPrefix: 'BI',  idPattern: '^BI-?\\d{4,6}$',      idExample: 'BI-30291' },
-    { no: 16, name: 'Identity & Access (AD)',     idPrefix: 'IAM', idPattern: '^IAM-?\\d{4,6}$',     idExample: 'IAM-55120' },
-    { no: 17, name: 'Email & Collaboration',      idPrefix: 'EC',  idPattern: '^EC-?\\d{5,7}$',      idExample: 'EC-771043' },
-    { no: 18, name: 'Contact Centre Telephony',   idPrefix: 'CC',  idPattern: '^CC-?\\d{4,6}$',      idExample: 'CC-90233' },
-    { no: 19, name: 'Network & Connectivity',     idPrefix: 'NW',  idPattern: '^NW-?\\d{4,6}$',      idExample: 'NW-12094' },
-    { no: 20, name: 'Print & Output Management',  idPrefix: 'PO',  idPattern: '^PO-?\\d{4,6}$',      idExample: 'PO-33418' },
-    { no: 21, name: 'Payment Gateway',            idPrefix: 'PG',  idPattern: '^PG-?\\d{6,8}$',      idExample: 'PG-70022841' },
-    { no: 22, name: 'Regulatory Reporting',       idPrefix: 'RG',  idPattern: '^RG-?\\d{4,6}$',      idExample: 'RG-60117' }
+    { no:  1, name: 'Castor',    code: 'CA-1'  },
+    { no:  2, name: 'Bellatrix', code: 'BX-1'  },
+    { no:  3, name: 'Zosma',     code: 'ZO-1'  },
+    { no:  4, name: 'Nash',      code: 'NN-2'  },
+    { no:  5, name: 'Sham',      code: 'SH-1'  },
+    { no:  6, name: 'Rastaban',  code: 'RD-1'  },
+    { no:  7, name: 'Polaris',   code: 'PO-1'  },
+    { no:  8, name: 'Alshat',    code: 'AT-1'  },
+    { no:  9, name: 'Nunki',     code: 'NN-1'  },
+    { no: 10, name: 'Phad',      code: 'PD-1'  },
+    { no: 11, name: 'Megrez',    code: 'MZ-1'  },
+    { no: 12, name: 'Izar',      code: 'IZ-1'  },
+    { no: 13, name: 'Electra',   code: 'EA-1'  },
+    { no: 14, name: 'Tarazed',   code: 'TZ-1'  },
+    { no: 15, name: 'Acubens',   code: ''      },
+    { no: 16, name: 'Acamar',    code: ''      },
+    { no: 17, name: 'Cheleb',    code: ''      },
+    { no: 18, name: 'Capella',   code: ''      },
+    { no: 19, name: 'Mars',      code: ''      },
+    { no: 20, name: 'Neptune',   code: ''      },
+    { no: 21, name: 'Pluto',     code: ''      },
+    { no: 22, name: 'P2132-5',   code: ''      }
   ],
 
   /* The 10 business units. A ticket can impact more than one. */
@@ -875,14 +879,26 @@ window.Store = (function () {
     return a ? a.code + ' — ' + a.label : String(code || '');
   }
 
-  /* Does this system id look right for that system? */
+  /* Codes are compared with punctuation and case ignored, so "ca 1",
+     "CA-1" and "ca1" all count as the same configuration item. */
+  function normCode(v) {
+    return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
+  function systemByCode(code) {
+    var k = normCode(code);
+    if (!k) return null;
+    for (var i = 0; i < config.systems.length; i++) {
+      if (config.systems[i].code && normCode(config.systems[i].code) === k) return config.systems[i];
+    }
+    return null;
+  }
+
+  /* Does this id match the code recorded against that system? */
   function validateSystemId(systemNo, systemId) {
     var s = systemByNo(systemNo);
-    if (!s || !s.idPattern || !systemId) return { ok: true, expected: s ? s.idExample : '' };
-    var ok;
-    try { ok = new RegExp(s.idPattern, 'i').test(String(systemId).trim()); }
-    catch (e) { ok = true; }
-    return { ok: ok, expected: s.idExample || s.idPrefix || '' };
+    if (!s || !s.code || !systemId) return { ok: true, expected: s ? s.code : '' };
+    return { ok: normCode(systemId) === normCode(s.code), expected: s.code };
   }
 
   /* ---------------- ticket CRUD ---------------- */
@@ -908,7 +924,7 @@ window.Store = (function () {
       loggedAt:      t.loggedAt || new Date().toISOString(),
       systemNo:      Number(t.systemNo),
       systemName:    sys ? sys.name : (t.systemName || ''),
-      systemId:      String(t.systemId || '').trim(),
+      systemId:      String(t.systemId || (sys && sys.code) || '').trim(),
       businessUnits: units,
       answerCode:    String(t.answerCode || '').trim(),
       priority:      t.priority || 'P3',
@@ -1589,7 +1605,9 @@ window.OCR = (function () {
   var LABELS = {
     systemNo:      ['system no', 'system number', 'system num', 'system #', 'sys no', 'sys #', 'system'],
     systemName:    ['system name', 'application', 'app name', 'service'],
-    systemId:      ['system id', 'system i d', 'sys id', 'systemid', 'system ref', 'system reference', 'asset id'],
+    systemId:      ['system id', 'system i d', 'sys id', 'systemid', 'system ref', 'system reference',
+                    'configuration item', 'configuration item code', 'config item', 'item code',
+                    'ci code', 'ci', 'code', 'asset id'],
     businessUnits: ['business unit', 'business units', 'business area', 'impacted business unit',
                     'impacted business units', 'bu', 'bus unit', 'business unit impacted',
                     'business units impacted', 'impacted area', 'impacted areas'],
@@ -1605,6 +1623,16 @@ window.OCR = (function () {
   };
 
   function clean(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+
+  /* Every four digit window inside each run of digits, so a value with a
+     stray leading digit still offers up the code it contains. */
+  function fourDigitWindows(s) {
+    var out = [];
+    (String(s).match(/\d+/g) || []).forEach(function (run) {
+      for (var i = 0; i + 4 <= run.length; i++) out.push(run.substr(i, 4));
+    });
+    return out;
+  }
 
   function key(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -1645,15 +1673,38 @@ window.OCR = (function () {
     return best;
   }
 
+  /* A camera loses colons — it reads them as 1, l, . or nothing at all.
+     So when a line has no separator, try each known label as a prefix
+     and take whatever follows it as the value. */
+  function labelPrefix(line) {
+    var best = null, bestLen = 0;
+    Object.keys(LABELS).forEach(function (field) {
+      LABELS[field].forEach(function (alias) {
+        if (alias.length <= bestLen) return;
+        var pattern = '^\\s*' + alias.split(' ').map(function (w) {
+          return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }).join('\\W*') + '\\W*(.+)$';
+        var m = new RegExp(pattern, 'i').exec(line);
+        if (m && clean(m[1])) { best = { field: field, value: clean(m[1]) }; bestLen = alias.length; }
+      });
+    });
+    return best;
+  }
+
   /* label: value pairs, one per line, plus the raw lines. */
   function scanLines(text) {
     var lines = String(text || '').split(/\r?\n/).map(clean).filter(Boolean);
     var pairs = {};
     lines.forEach(function (line) {
       var m = /^(.{2,40}?)\s*[:\-–]\s*(.+)$/.exec(line);
-      if (!m) return;
-      var field = labelOf(m[1]);
-      if (field && !pairs[field]) pairs[field] = clean(m[2]);
+      var field = m ? labelOf(m[1]) : null;
+      if (field) {
+        if (!pairs[field]) pairs[field] = clean(m[2]);
+        return;
+      }
+      if (m) return;                       /* a separator, but not a label we know */
+      var hit = labelPrefix(line);
+      if (hit && !pairs[hit.field]) pairs[hit.field] = hit.value;
     });
     return { lines: lines, pairs: pairs };
   }
@@ -1664,6 +1715,59 @@ window.OCR = (function () {
     var h = key(hay);
     var hit = nt.filter(function (t) { return h.indexOf(t) !== -1; }).length;
     return hit / nt.length;
+  }
+
+  /* Glyphs a camera mixes up, as equivalence classes. D is deliberately
+     kept out of the 0/O class: PO-1 and PD-1 are both real codes and must
+     stay distinct. Within a class the characters are interchangeable,
+     which is why NN-1 and NN-2 still cannot be confused with each other. */
+  var CONFUSABLE = ['0O', '1IL', '5S', '8B', '2Z', '6G'];
+
+  function confusableWith(a, b) {
+    for (var i = 0; i < CONFUSABLE.length; i++) {
+      if (CONFUSABLE[i].indexOf(a) !== -1 && CONFUSABLE[i].indexOf(b) !== -1) return true;
+    }
+    return false;
+  }
+
+  function normCode(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+  function codeEquals(a, b) {
+    a = normCode(a); b = normCode(b);
+    if (!a || a.length !== b.length) return { match: false, exact: false };
+    var exact = true;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] === b[i]) continue;
+      if (confusableWith(a[i], b[i])) { exact = false; continue; }
+      return { match: false, exact: false };
+    }
+    return { match: true, exact: exact };
+  }
+
+  /* Look through the text for a token that is one of the known codes.
+     An exact hit always wins; a look-alike hit is only used when it is
+     the only one, so an ambiguous smudge is reported rather than guessed. */
+  function findConfigCode(text, systems) {
+    var withCodes = systems.filter(function (s) { return s.code; });
+    if (!withCodes.length) return null;
+
+    var tokens = String(text || '').toUpperCase().match(/[A-Z0-9]+(?:[-.][A-Z0-9]+)*/g) || [];
+    var candidates = tokens.slice();
+    /* also try neighbouring tokens joined, for a code written "CA 1" */
+    for (var i = 0; i < tokens.length - 1; i++) candidates.push(tokens[i] + tokens[i + 1]);
+
+    var loose = [];
+    for (var c = 0; c < candidates.length; c++) {
+      for (var s = 0; s < withCodes.length; s++) {
+        var r = codeEquals(candidates[c], withCodes[s].code);
+        if (!r.match) continue;
+        if (r.exact) return { system: withCodes[s], exact: true, read: candidates[c] };
+        if (loose.every(function (l) { return l.system.no !== withCodes[s].no; })) {
+          loose.push({ system: withCodes[s], exact: false, read: candidates[c] });
+        }
+      }
+    }
+    return loose.length === 1 ? loose[0] : null;
   }
 
   function matchSystemByName(text, systems) {
@@ -1677,7 +1781,11 @@ window.OCR = (function () {
 
   function parseUnitList(value, units) {
     var found = {};
-    var v = digitFix(value || '');
+    /* "3,4and 9" comes back as one token, so part the digits from the
+       letters before looking for numbers */
+    var v = digitFix(value || '')
+      .replace(/(\d)(?=[A-Za-z])/g, '$1 ')
+      .replace(/([A-Za-z])(?=\d)/g, '$1 ');
     /* explicit numbers: "1, 4 and 7" / "BU3" */
     (v.match(/\b\d{1,2}\b/g) || []).forEach(function (n) {
       n = Number(n);
@@ -1740,44 +1848,37 @@ window.OCR = (function () {
       }
     }
 
-    /* --- system id --- */
-    var sysId = pairs.systemId ? clean(digitFix(pairs.systemId)).split(/\s{2,}/)[0] : '';
-    if (!sysId) {
-      /* try the pattern belonging to the identified system first */
-      var sys = sysNo !== null ? config.systems.filter(function (s) { return Number(s.no) === sysNo; })[0] : null;
-      var hay = digitFix(whole);
-      if (sys && sys.idPattern) {
-        try {
-          var loose = new RegExp(sys.idPattern.replace(/^\^/, '\\b').replace(/\$$/, '\\b'), 'i');
-          var hitP = loose.exec(hay);
-          if (hitP) sysId = hitP[0];
-        } catch (e) {}
+    /* --- configuration item code ---
+       The code belongs to the system, so finding one identifies the
+       system too, and knowing the system supplies the code. */
+    var codeHit = null;
+    if (pairs.systemId) codeHit = findConfigCode(pairs.systemId, config.systems);
+    if (!codeHit) codeHit = findConfigCode(whole, config.systems);
+
+    if (codeHit) {
+      set('systemId', codeHit.system.code,
+        codeHit.exact
+          ? (pairs.systemId ? 'read from a labelled field' : 'matched against the code list')
+          : 'matched against the code list, allowing for look-alike characters');
+
+      if (fields.systemNo === undefined) {
+        set('systemNo', Number(codeHit.system.no), 'identified by the item code');
+      } else if (Number(fields.systemNo) !== Number(codeHit.system.no)) {
+        notes.push('The code ' + codeHit.system.code + ' belongs to system ' + codeHit.system.no +
+          ' (' + codeHit.system.name + '), not system ' + fields.systemNo + '. Please confirm which is right.');
       }
-      if (!sysId) {
-        var generic = /\b([A-Z]{2,4}\s?-?\s?\d{3,8})\b/.exec(hay.toUpperCase());
-        if (generic) sysId = generic[1].replace(/\s+/g, '');
+    } else if (pairs.systemId) {
+      var typed = clean(pairs.systemId).split(/\s{2,}/)[0].toUpperCase();
+      if (typed) {
+        set('systemId', typed, 'read from a labelled field');
+        notes.push('The code ' + typed + ' is not in the system list — check it, or add it on the Reference data tab.');
       }
     }
-    if (sysId) {
-      sysId = sysId.toUpperCase().replace(/\s+/g, '');
-      set('systemId', sysId, pairs.systemId ? 'read from a labelled field' : 'pattern match');
 
-      /* An id carries its system with it — use it when the number is missing
-         or was rejected, and flag it when the two disagree. */
-      var owner = config.systems.filter(function (s2) {
-        if (s2.idPattern) {
-          try { if (new RegExp(s2.idPattern, 'i').test(sysId)) return true; } catch (e) {}
-        }
-        return s2.idPrefix && new RegExp('^' + s2.idPrefix + '[-\\s]?\\d', 'i').test(sysId);
-      })[0];
-      if (owner) {
-        if (fields.systemNo === undefined) {
-          set('systemNo', Number(owner.no), 'derived from the system id');
-        } else if (Number(fields.systemNo) !== Number(owner.no)) {
-          notes.push('The id ' + sysId + ' belongs to system ' + owner.no + ' (' + owner.name +
-            '), not system ' + fields.systemNo + '. Please confirm which is right.');
-        }
-      }
+    /* Still nothing, but we know the system: use the code recorded for it. */
+    if (fields.systemId === undefined && fields.systemNo !== undefined) {
+      var owner = config.systems.filter(function (s) { return Number(s.no) === Number(fields.systemNo); })[0];
+      if (owner && owner.code) set('systemId', owner.code, 'the code recorded for this system');
     }
 
     /* --- business units --- */
@@ -1795,10 +1896,16 @@ window.OCR = (function () {
     if (units.length) set('businessUnits', units, pairs.businessUnits ? 'read from a labelled field' : 'matched unit names in the text');
 
     /* --- answer code --- */
+    function isKnownCode(c) {
+      return config.answerCodes.some(function (a) { return a.code === c; });
+    }
+
     var code = '';
     if (pairs.answerCode) {
-      var mc = /\b(\d{4})\b/.exec(digitFix(pairs.answerCode));
-      if (mc) code = mc[1];
+      /* a colon misread as a digit glues itself to the value ("12010"),
+         so prefer any four digit window that is actually in the list */
+      var known4 = fourDigitWindows(digitFix(pairs.answerCode)).filter(isKnownCode);
+      code = known4[0] || (/\b(\d{4})\b/.exec(digitFix(pairs.answerCode)) || [])[1] || '';
     }
     if (!code) {
       var inlineCode = /\b(?:answer|resolution|closure|fix)\s*code\s*[:\-]?\s*(\d{4})\b/i.exec(digitFix(whole));
@@ -1807,9 +1914,7 @@ window.OCR = (function () {
     if (!code) {
       /* any four digit run that is a known code wins over a random one */
       var candidates = (digitFix(whole).match(/\b\d{4}\b/g) || []);
-      var known = candidates.filter(function (c) {
-        return config.answerCodes.some(function (a) { return a.code === c; });
-      });
+      var known = candidates.filter(isKnownCode);
       if (known.length) {
         code = known[0];
         if (known.length > 1) notes.push('More than one known answer code appears in the photo (' +
@@ -1866,6 +1971,12 @@ window.OCR = (function () {
 
     /* --- how complete is this? --- */
     var required = ['systemNo', 'systemId', 'businessUnits', 'answerCode'];
+    var identified = fields.systemNo !== undefined
+      ? config.systems.filter(function (s) { return Number(s.no) === Number(fields.systemNo); })[0]
+      : null;
+    if (identified && !identified.code) {
+      required = required.filter(function (f) { return f !== 'systemId'; });
+    }
     var missing = required.filter(function (f) {
       return fields[f] === undefined || (Array.isArray(fields[f]) && !fields[f].length);
     });
@@ -1893,7 +2004,10 @@ window.OCR = (function () {
 
   return {
     available: available, read: read, parse: parse, terminate: terminate,
-    _internals: { scanLines: scanLines, parseUnitList: parseUnitList, digitFix: digitFix, labelOf: labelOf }
+    _internals: {
+      scanLines: scanLines, parseUnitList: parseUnitList, digitFix: digitFix,
+      labelOf: labelOf, findConfigCode: findConfigCode, codeEquals: codeEquals
+    }
   };
 })();
 </script>
@@ -2322,10 +2436,27 @@ window.Dashboard = (function () {
     var no = $('#t-system').value;
     var s = no ? Store.systemByNo(no) : null;
     var hint = $('#t-system-id-hint');
-    if (!s) { hint.textContent = 'Pick a system first — every system numbers its ids differently.'; return; }
-    hint.textContent = 'System ' + s.no + ' ids look like ' + (s.idExample || s.idPrefix + '…') + '.';
     var input = $('#t-system-id');
-    if (!input.value && s.idPrefix) input.placeholder = s.idExample || s.idPrefix;
+
+    if (!s) {
+      hint.textContent = 'Choose a system and its code appears here.';
+      input.placeholder = '';
+      validateId();
+      return;
+    }
+
+    /* The code belongs to the system, so fill it in — but leave anything
+       the analyst typed themselves alone. */
+    var previous = input.getAttribute('data-auto');
+    if (!input.value || input.value === previous) {
+      input.value = s.code || '';
+      input.setAttribute('data-auto', s.code || '');
+    }
+
+    hint.textContent = s.code
+      ? 'Filled in from ' + s.name + '. Change it only if this ticket is about a different item.'
+      : 'No code is recorded for ' + s.name + ' yet — add one on the Reference data tab, or type it here.';
+    input.placeholder = s.code || 'e.g. CA-1';
     validateId();
   }
 
@@ -2337,7 +2468,8 @@ window.Dashboard = (function () {
     var res = Store.validateSystemId(no, input.value);
     input.classList.toggle('is-warn', !res.ok);
     out.hidden = res.ok;
-    out.textContent = res.ok ? '' : 'That does not match the usual shape for this system (e.g. ' + res.expected + '). It will still be saved.';
+    out.textContent = res.ok ? '' : 'The code recorded for this system is ' + res.expected +
+      '. What you have typed will still be saved.';
   }
 
   function readForm() {
@@ -2385,7 +2517,8 @@ window.Dashboard = (function () {
   function formErrors(data) {
     var errs = [];
     if (!data.systemNo) errs.push('Choose the system.');
-    if (!String(data.systemId).trim()) errs.push('Enter the system id.');
+    var sys = data.systemNo ? Store.systemByNo(data.systemNo) : null;
+    if (sys && sys.code && !String(data.systemId).trim()) errs.push('Enter the configuration item code.');
     if (!data.businessUnits.length) errs.push('Tick at least one impacted business unit.');
     if (!/^\d{4}$/.test(String(data.answerCode).trim())) errs.push('Enter the four digit answer code.');
     return errs;
@@ -2647,15 +2780,14 @@ window.Dashboard = (function () {
     var cfg = Store.getConfig();
 
     $('#ref-systems').innerHTML =
-      '<table class="grid editable"><thead><tr><th>No</th><th>System name</th><th>Id prefix</th>' +
-      '<th>Id pattern (regex)</th><th>Example id</th></tr></thead><tbody>' +
+      '<table class="grid editable"><thead><tr><th>No</th><th>System name</th>' +
+      '<th>Configuration item code</th></tr></thead><tbody>' +
       cfg.systems.map(function (s, i) {
         return '<tr data-i="' + i + '">' +
           '<td class="num">' + s.no + '</td>' +
           '<td><input data-k="name" value="' + esc(s.name) + '"></td>' +
-          '<td><input data-k="idPrefix" class="short" value="' + esc(s.idPrefix || '') + '"></td>' +
-          '<td><input data-k="idPattern" class="mono" value="' + esc(s.idPattern || '') + '"></td>' +
-          '<td><input data-k="idExample" class="mono" value="' + esc(s.idExample || '') + '"></td>' +
+          '<td><input data-k="code" class="mono short" placeholder="none recorded" value="' +
+            esc(s.code || '') + '"></td>' +
           '</tr>';
       }).join('') + '</tbody></table>';
 
@@ -2713,6 +2845,15 @@ window.Dashboard = (function () {
     var cfg = Store.getConfig();
     var bad = cfg.answerCodes.filter(function (a) { return !/^\d{4}$/.test(a.code); });
     if (bad.length) { toast('Answer codes must be four digits — check ' + bad[0].label, 'warning'); return; }
+
+    var seen = {}, clash = null;
+    cfg.systems.forEach(function (s) {
+      var k = Store.normCode(s.code);
+      if (!k) return;
+      if (seen[k]) clash = seen[k] + ' and ' + s.name + ' both use ' + s.code;
+      seen[k] = s.name;
+    });
+    if (clash) { toast('Two systems cannot share a code — ' + clash, 'warning'); return; }
     Store.saveConfig();
     refreshEverything();
     toast('Reference data saved');
@@ -2853,9 +2994,7 @@ window.Dashboard = (function () {
       var r = Math.random();
       out.push({
         systemNo: sys.no,
-        systemId: (sys.idExample || sys.idPrefix + '-1000').replace(/\d+$/, function (d) {
-          return String(Number(d) + Math.floor(Math.random() * 400));
-        }),
+        systemId: sys.code || '',
         businessUnits: units.sort(function (a, b) { return a - b; }),
         answerCode: ans.code,
         priority: r < 0.05 ? 'P1' : r < 0.25 ? 'P2' : r < 0.8 ? 'P3' : 'P4',

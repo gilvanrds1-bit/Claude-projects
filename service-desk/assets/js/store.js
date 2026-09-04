@@ -104,14 +104,26 @@ window.Store = (function () {
     return a ? a.code + ' — ' + a.label : String(code || '');
   }
 
-  /* Does this system id look right for that system? */
+  /* Codes are compared with punctuation and case ignored, so "ca 1",
+     "CA-1" and "ca1" all count as the same configuration item. */
+  function normCode(v) {
+    return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
+  function systemByCode(code) {
+    var k = normCode(code);
+    if (!k) return null;
+    for (var i = 0; i < config.systems.length; i++) {
+      if (config.systems[i].code && normCode(config.systems[i].code) === k) return config.systems[i];
+    }
+    return null;
+  }
+
+  /* Does this id match the code recorded against that system? */
   function validateSystemId(systemNo, systemId) {
     var s = systemByNo(systemNo);
-    if (!s || !s.idPattern || !systemId) return { ok: true, expected: s ? s.idExample : '' };
-    var ok;
-    try { ok = new RegExp(s.idPattern, 'i').test(String(systemId).trim()); }
-    catch (e) { ok = true; }
-    return { ok: ok, expected: s.idExample || s.idPrefix || '' };
+    if (!s || !s.code || !systemId) return { ok: true, expected: s ? s.code : '' };
+    return { ok: normCode(systemId) === normCode(s.code), expected: s.code };
   }
 
   /* ---------------- ticket CRUD ---------------- */
@@ -137,7 +149,7 @@ window.Store = (function () {
       loggedAt:      t.loggedAt || new Date().toISOString(),
       systemNo:      Number(t.systemNo),
       systemName:    sys ? sys.name : (t.systemName || ''),
-      systemId:      String(t.systemId || '').trim(),
+      systemId:      String(t.systemId || (sys && sys.code) || '').trim(),
       businessUnits: units,
       answerCode:    String(t.answerCode || '').trim(),
       priority:      t.priority || 'P3',

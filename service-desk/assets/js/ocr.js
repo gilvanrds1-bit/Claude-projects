@@ -114,7 +114,9 @@ window.OCR = (function () {
   var LABELS = {
     systemNo:      ['system no', 'system number', 'system num', 'system #', 'sys no', 'sys #', 'system'],
     systemName:    ['system name', 'application', 'app name', 'service'],
-    systemId:      ['system id', 'system i d', 'sys id', 'systemid', 'system ref', 'system reference', 'asset id'],
+    systemId:      ['system id', 'system i d', 'sys id', 'systemid', 'system ref', 'system reference',
+                    'configuration item', 'configuration item code', 'config item', 'item code',
+                    'ci code', 'ci', 'code', 'asset id'],
     businessUnits: ['business unit', 'business units', 'business area', 'impacted business unit',
                     'impacted business units', 'bu', 'bus unit', 'business unit impacted',
                     'business units impacted', 'impacted area', 'impacted areas'],
@@ -130,6 +132,16 @@ window.OCR = (function () {
   };
 
   function clean(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+
+  /* Every four digit window inside each run of digits, so a value with a
+     stray leading digit still offers up the code it contains. */
+  function fourDigitWindows(s) {
+    var out = [];
+    (String(s).match(/\d+/g) || []).forEach(function (run) {
+      for (var i = 0; i + 4 <= run.length; i++) out.push(run.substr(i, 4));
+    });
+    return out;
+  }
 
   function key(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -170,15 +182,38 @@ window.OCR = (function () {
     return best;
   }
 
+  /* A camera loses colons — it reads them as 1, l, . or nothing at all.
+     So when a line has no separator, try each known label as a prefix
+     and take whatever follows it as the value. */
+  function labelPrefix(line) {
+    var best = null, bestLen = 0;
+    Object.keys(LABELS).forEach(function (field) {
+      LABELS[field].forEach(function (alias) {
+        if (alias.length <= bestLen) return;
+        var pattern = '^\\s*' + alias.split(' ').map(function (w) {
+          return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }).join('\\W*') + '\\W*(.+)$';
+        var m = new RegExp(pattern, 'i').exec(line);
+        if (m && clean(m[1])) { best = { field: field, value: clean(m[1]) }; bestLen = alias.length; }
+      });
+    });
+    return best;
+  }
+
   /* label: value pairs, one per line, plus the raw lines. */
   function scanLines(text) {
     var lines = String(text || '').split(/\r?\n/).map(clean).filter(Boolean);
     var pairs = {};
     lines.forEach(function (line) {
       var m = /^(.{2,40}?)\s*[:\-–]\s*(.+)$/.exec(line);
-      if (!m) return;
-      var field = labelOf(m[1]);
-      if (field && !pairs[field]) pairs[field] = clean(m[2]);
+      var field = m ? labelOf(m[1]) : null;
+      if (field) {
+        if (!pairs[field]) pairs[field] = clean(m[2]);
+        return;
+      }
+      if (m) return;                       /* a separator, but not a label we know */
+      var hit = labelPrefix(line);
+      if (hit && !pairs[hit.field]) pairs[hit.field] = hit.value;
     });
     return { lines: lines, pairs: pairs };
   }
@@ -189,6 +224,59 @@ window.OCR = (function () {
     var h = key(hay);
     var hit = nt.filter(function (t) { return h.indexOf(t) !== -1; }).length;
     return hit / nt.length;
+  }
+
+  /* Glyphs a camera mixes up, as equivalence classes. D is deliberately
+     kept out of the 0/O class: PO-1 and PD-1 are both real codes and must
+     stay distinct. Within a class the characters are interchangeable,
+     which is why NN-1 and NN-2 still cannot be confused with each other. */
+  var CONFUSABLE = ['0O', '1IL', '5S', '8B', '2Z', '6G'];
+
+  function confusableWith(a, b) {
+    for (var i = 0; i < CONFUSABLE.length; i++) {
+      if (CONFUSABLE[i].indexOf(a) !== -1 && CONFUSABLE[i].indexOf(b) !== -1) return true;
+    }
+    return false;
+  }
+
+  function normCode(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+  function codeEquals(a, b) {
+    a = normCode(a); b = normCode(b);
+    if (!a || a.length !== b.length) return { match: false, exact: false };
+    var exact = true;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] === b[i]) continue;
+      if (confusableWith(a[i], b[i])) { exact = false; continue; }
+      return { match: false, exact: false };
+    }
+    return { match: true, exact: exact };
+  }
+
+  /* Look through the text for a token that is one of the known codes.
+     An exact hit always wins; a look-alike hit is only used when it is
+     the only one, so an ambiguous smudge is reported rather than guessed. */
+  function findConfigCode(text, systems) {
+    var withCodes = systems.filter(function (s) { return s.code; });
+    if (!withCodes.length) return null;
+
+    var tokens = String(text || '').toUpperCase().match(/[A-Z0-9]+(?:[-.][A-Z0-9]+)*/g) || [];
+    var candidates = tokens.slice();
+    /* also try neighbouring tokens joined, for a code written "CA 1" */
+    for (var i = 0; i < tokens.length - 1; i++) candidates.push(tokens[i] + tokens[i + 1]);
+
+    var loose = [];
+    for (var c = 0; c < candidates.length; c++) {
+      for (var s = 0; s < withCodes.length; s++) {
+        var r = codeEquals(candidates[c], withCodes[s].code);
+        if (!r.match) continue;
+        if (r.exact) return { system: withCodes[s], exact: true, read: candidates[c] };
+        if (loose.every(function (l) { return l.system.no !== withCodes[s].no; })) {
+          loose.push({ system: withCodes[s], exact: false, read: candidates[c] });
+        }
+      }
+    }
+    return loose.length === 1 ? loose[0] : null;
   }
 
   function matchSystemByName(text, systems) {
@@ -202,7 +290,11 @@ window.OCR = (function () {
 
   function parseUnitList(value, units) {
     var found = {};
-    var v = digitFix(value || '');
+    /* "3,4and 9" comes back as one token, so part the digits from the
+       letters before looking for numbers */
+    var v = digitFix(value || '')
+      .replace(/(\d)(?=[A-Za-z])/g, '$1 ')
+      .replace(/([A-Za-z])(?=\d)/g, '$1 ');
     /* explicit numbers: "1, 4 and 7" / "BU3" */
     (v.match(/\b\d{1,2}\b/g) || []).forEach(function (n) {
       n = Number(n);
@@ -265,44 +357,37 @@ window.OCR = (function () {
       }
     }
 
-    /* --- system id --- */
-    var sysId = pairs.systemId ? clean(digitFix(pairs.systemId)).split(/\s{2,}/)[0] : '';
-    if (!sysId) {
-      /* try the pattern belonging to the identified system first */
-      var sys = sysNo !== null ? config.systems.filter(function (s) { return Number(s.no) === sysNo; })[0] : null;
-      var hay = digitFix(whole);
-      if (sys && sys.idPattern) {
-        try {
-          var loose = new RegExp(sys.idPattern.replace(/^\^/, '\\b').replace(/\$$/, '\\b'), 'i');
-          var hitP = loose.exec(hay);
-          if (hitP) sysId = hitP[0];
-        } catch (e) {}
+    /* --- configuration item code ---
+       The code belongs to the system, so finding one identifies the
+       system too, and knowing the system supplies the code. */
+    var codeHit = null;
+    if (pairs.systemId) codeHit = findConfigCode(pairs.systemId, config.systems);
+    if (!codeHit) codeHit = findConfigCode(whole, config.systems);
+
+    if (codeHit) {
+      set('systemId', codeHit.system.code,
+        codeHit.exact
+          ? (pairs.systemId ? 'read from a labelled field' : 'matched against the code list')
+          : 'matched against the code list, allowing for look-alike characters');
+
+      if (fields.systemNo === undefined) {
+        set('systemNo', Number(codeHit.system.no), 'identified by the item code');
+      } else if (Number(fields.systemNo) !== Number(codeHit.system.no)) {
+        notes.push('The code ' + codeHit.system.code + ' belongs to system ' + codeHit.system.no +
+          ' (' + codeHit.system.name + '), not system ' + fields.systemNo + '. Please confirm which is right.');
       }
-      if (!sysId) {
-        var generic = /\b([A-Z]{2,4}\s?-?\s?\d{3,8})\b/.exec(hay.toUpperCase());
-        if (generic) sysId = generic[1].replace(/\s+/g, '');
+    } else if (pairs.systemId) {
+      var typed = clean(pairs.systemId).split(/\s{2,}/)[0].toUpperCase();
+      if (typed) {
+        set('systemId', typed, 'read from a labelled field');
+        notes.push('The code ' + typed + ' is not in the system list — check it, or add it on the Reference data tab.');
       }
     }
-    if (sysId) {
-      sysId = sysId.toUpperCase().replace(/\s+/g, '');
-      set('systemId', sysId, pairs.systemId ? 'read from a labelled field' : 'pattern match');
 
-      /* An id carries its system with it — use it when the number is missing
-         or was rejected, and flag it when the two disagree. */
-      var owner = config.systems.filter(function (s2) {
-        if (s2.idPattern) {
-          try { if (new RegExp(s2.idPattern, 'i').test(sysId)) return true; } catch (e) {}
-        }
-        return s2.idPrefix && new RegExp('^' + s2.idPrefix + '[-\\s]?\\d', 'i').test(sysId);
-      })[0];
-      if (owner) {
-        if (fields.systemNo === undefined) {
-          set('systemNo', Number(owner.no), 'derived from the system id');
-        } else if (Number(fields.systemNo) !== Number(owner.no)) {
-          notes.push('The id ' + sysId + ' belongs to system ' + owner.no + ' (' + owner.name +
-            '), not system ' + fields.systemNo + '. Please confirm which is right.');
-        }
-      }
+    /* Still nothing, but we know the system: use the code recorded for it. */
+    if (fields.systemId === undefined && fields.systemNo !== undefined) {
+      var owner = config.systems.filter(function (s) { return Number(s.no) === Number(fields.systemNo); })[0];
+      if (owner && owner.code) set('systemId', owner.code, 'the code recorded for this system');
     }
 
     /* --- business units --- */
@@ -320,10 +405,16 @@ window.OCR = (function () {
     if (units.length) set('businessUnits', units, pairs.businessUnits ? 'read from a labelled field' : 'matched unit names in the text');
 
     /* --- answer code --- */
+    function isKnownCode(c) {
+      return config.answerCodes.some(function (a) { return a.code === c; });
+    }
+
     var code = '';
     if (pairs.answerCode) {
-      var mc = /\b(\d{4})\b/.exec(digitFix(pairs.answerCode));
-      if (mc) code = mc[1];
+      /* a colon misread as a digit glues itself to the value ("12010"),
+         so prefer any four digit window that is actually in the list */
+      var known4 = fourDigitWindows(digitFix(pairs.answerCode)).filter(isKnownCode);
+      code = known4[0] || (/\b(\d{4})\b/.exec(digitFix(pairs.answerCode)) || [])[1] || '';
     }
     if (!code) {
       var inlineCode = /\b(?:answer|resolution|closure|fix)\s*code\s*[:\-]?\s*(\d{4})\b/i.exec(digitFix(whole));
@@ -332,9 +423,7 @@ window.OCR = (function () {
     if (!code) {
       /* any four digit run that is a known code wins over a random one */
       var candidates = (digitFix(whole).match(/\b\d{4}\b/g) || []);
-      var known = candidates.filter(function (c) {
-        return config.answerCodes.some(function (a) { return a.code === c; });
-      });
+      var known = candidates.filter(isKnownCode);
       if (known.length) {
         code = known[0];
         if (known.length > 1) notes.push('More than one known answer code appears in the photo (' +
@@ -391,6 +480,12 @@ window.OCR = (function () {
 
     /* --- how complete is this? --- */
     var required = ['systemNo', 'systemId', 'businessUnits', 'answerCode'];
+    var identified = fields.systemNo !== undefined
+      ? config.systems.filter(function (s) { return Number(s.no) === Number(fields.systemNo); })[0]
+      : null;
+    if (identified && !identified.code) {
+      required = required.filter(function (f) { return f !== 'systemId'; });
+    }
     var missing = required.filter(function (f) {
       return fields[f] === undefined || (Array.isArray(fields[f]) && !fields[f].length);
     });
@@ -418,6 +513,9 @@ window.OCR = (function () {
 
   return {
     available: available, read: read, parse: parse, terminate: terminate,
-    _internals: { scanLines: scanLines, parseUnitList: parseUnitList, digitFix: digitFix, labelOf: labelOf }
+    _internals: {
+      scanLines: scanLines, parseUnitList: parseUnitList, digitFix: digitFix,
+      labelOf: labelOf, findConfigCode: findConfigCode, codeEquals: codeEquals
+    }
   };
 })();
