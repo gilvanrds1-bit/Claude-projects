@@ -18,6 +18,19 @@ fields are read off the picture and put straight onto the dashboard.
 
 Open `index.html` in a browser. There is nothing to install, no build step and no server.
 
+There is also a **portable single-file build** at
+[`dist/service-desk-standalone.html`](dist/service-desk-standalone.html) — the whole app folded
+into one file you can email to a colleague or drop on a share. It seeds sample tickets on a
+first visit so the dashboard opens with something to look at. The one thing it cannot carry is
+the recognition engine (a worker plus about 10 MB of WebAssembly and language data, which the
+browser has to fetch as separate files), so that copy pulls it from a CDN and needs to be
+online for photo capture. Use the folder version if you want recognition with no network at
+all. Rebuild it after changing anything under `assets/`:
+
+```sh
+node build.js
+```
+
 ---
 
 ## The five tabs
@@ -113,6 +126,8 @@ assets/js/dashboard.js         tiles, charts, filters, table
 assets/js/app.js               tabs, forms, capture queue, import/export
 vendor/tesseract/              the recognition engine, committed so it works offline
 docs/ticket-form.html          printable blank ticket
+build.js                       folds the app into one portable file
+dist/                          that single-file build
 test/parser.test.js            tests for the photo parser
 ```
 

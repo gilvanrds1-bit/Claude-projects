@@ -16,4 +16,11 @@ Desktop.ini
 node_modules/
 dist/
 build/
+
+# ...but the single-file build of the service desk app is a deliverable:
+# it is what you email to a colleague, and the repo is meant to need no
+# build step. Rebuild it with `node service-desk/build.js` after changing
+# anything under service-desk/assets/.
+!service-desk/dist/
+!service-desk/dist/*.html
 npm-debug.log*

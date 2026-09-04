@@ -126,6 +126,15 @@ a { color: var(--accent); }
 .tab-btn.is-active { background: var(--accent); color: var(--accent-ink); }
 
 main { padding: 20px; max-width: 1440px; margin: 0 auto; }
+
+.banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 20px; font-size: 13px; color: var(--text-secondary);
+  background: color-mix(in srgb, var(--status-warning) 20%, var(--surface-1));
+  border-bottom: 1px solid var(--border);
+}
+.banner b { color: var(--text-primary); }
+.banner button { margin-left: auto; }
 .tab-panel[hidden] { display: none; }
 
 .panel {

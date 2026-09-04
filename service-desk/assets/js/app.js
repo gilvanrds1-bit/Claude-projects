@@ -501,27 +501,51 @@
 
   /* ================= data in / out ================= */
 
-  function download(name, text, type) {
+  /* A plain download link works when the page is opened as a file or
+     served normally. In a shared preview the host mediates saving
+     instead, so ask it and fall back only when it is not there. */
+  function download(name, text, type, done) {
+    if (window.claude && typeof window.claude.use === 'function') {
+      window.claude.use('downloads').then(function (downloads) {
+        if (!downloads) return linkDownload(name, text, type, done);
+        return downloads.save({ filename: name, data: text }).then(function () {
+          if (done) toast(done);
+        }).catch(function (err) {
+          var code = err && err.code;
+          if (code === 'declined') return;
+          toast(code === 'rate_limited'
+            ? 'A save is already waiting — finish that one first.'
+            : 'That file could not be saved here. ' +
+              'The copy in the repository saves it straight to your downloads.', 'warning');
+        });
+      }).catch(function () { linkDownload(name, text, type, done); });
+      return;
+    }
+    linkDownload(name, text, type, done);
+  }
+
+  function linkDownload(name, text, type, done) {
     var blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    if (done) toast(done);
   }
 
   function wireData() {
     $('#d-csv').addEventListener('click', function () {
       var list = Dash.filtered();
       download('service-desk-tickets-' + new Date().toISOString().slice(0, 10) + '.csv',
-        Store.toCSV(list), 'text/csv;charset=utf-8');
-      toast('Exported ' + list.length + ' tickets as CSV');
+        Store.toCSV(list), 'text/csv;charset=utf-8',
+        'Exported ' + list.length + ' ticket' + (list.length === 1 ? '' : 's') + ' as CSV');
     });
 
     $('#d-json').addEventListener('click', function () {
       download('service-desk-backup-' + new Date().toISOString().slice(0, 10) + '.json',
-        JSON.stringify(Store.exportBundle(), null, 2), 'application/json');
-      toast('Exported tickets and reference data');
+        JSON.stringify(Store.exportBundle(), null, 2), 'application/json',
+        'Exported tickets and reference data');
     });
 
     $('#d-import').addEventListener('change', function (e) {
@@ -622,10 +646,41 @@
     return out.sort(function (a, b) { return a.loggedAt < b.loggedAt ? -1 : 1; });
   }
 
+  /* ================= single file / shared preview ================= */
+
+  /* The build script sets window.SDP_SINGLE_FILE on the one-file copy.
+     There is no folder beside it, so seed something to look at and be
+     straight about what photo capture can and cannot do. */
+  function singleFileSetup() {
+    if (!Store.all().length) {
+      Store.addMany(demoTickets(140));
+      var banner = document.createElement('div');
+      banner.className = 'banner';
+      banner.innerHTML = '<span><b>Sample tickets.</b> These 140 are invented, so the dashboard has ' +
+        'something to show. Delete them on the <b>Data</b> tab, then log your own.</span>' +
+        '<button type="button" class="btn ghost tiny">Hide</button>';
+      banner.querySelector('button').addEventListener('click', function () { banner.remove(); });
+      document.querySelector('.topbar').insertAdjacentElement('afterend', banner);
+    }
+
+    var note = document.createElement('p');
+    note.className = 'field-hint';
+    note.style.marginTop = '12px';
+    note.innerHTML = '<b>About this copy.</b> Reading a photograph needs the recognition engine, ' +
+      'which is roughly 10&nbsp;MB of separate files and cannot travel inside a single page. ' +
+      'This copy fetches it over the internet, so photo capture works when you are online and ' +
+      'nothing is blocking it — and not at all in a shared preview, where fetching it is refused. ' +
+      'The full version in the repository ships the engine alongside the page and reads photos ' +
+      'with no network at all. Everything else here works either way.';
+    var status = $('#cap-status');
+    status.parentNode.insertBefore(note, status.nextSibling);
+  }
+
   /* ================= boot ================= */
 
   function boot() {
     Store.load();
+    if (window.SDP_SINGLE_FILE) singleFileSetup();
     applyTheme(Store.getPrefs().theme || 'system');
 
     buildFormOptions();

@@ -142,7 +142,13 @@ window.Charts = (function () {
     var m = { top: 12, right: 12, bottom: 26, left: 34 };
     var plotW = width - m.left - m.right;
     var plotH = height - m.top - m.bottom;
-    var max = niceMax(Math.max.apply(null, data.map(function (d) { return d.value; })) || 1);
+    /* pick a maximum the tick count divides exactly, so every axis
+       label is a whole number of tickets */
+    var ticks = 4;
+    var peak = Math.max.apply(null, data.map(function (d) { return d.value; })) || 1;
+    var step = Math.ceil(peak / ticks);
+    [1, 2, 5, 10, 20, 25, 50, 100].some(function (n) { if (n >= step) { step = n; return true; } });
+    var max = step * ticks;
 
     var svg = el('svg', {
       viewBox: '0 0 ' + width + ' ' + height, width: '100%', height: height,
@@ -153,7 +159,6 @@ window.Charts = (function () {
     var y = function (v) { return m.top + plotH - (v / max) * plotH; };
 
     /* recessive gridlines + axis */
-    var ticks = 4;
     for (var g = 0; g <= ticks; g++) {
       var v = (max / ticks) * g;
       el('line', { x1: m.left, x2: m.left + plotW, y1: y(v), y2: y(v), class: 'viz-grid' }, svg);
