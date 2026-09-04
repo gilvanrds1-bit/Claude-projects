@@ -70,7 +70,7 @@
 
     $('#t-units').innerHTML = cfg.businessUnits.map(function (u) {
       return '<label class="check"><input type="checkbox" name="bu" value="' + u.no + '"> ' +
-        '<span><b>' + u.no + '</b> ' + esc(u.name) + '</span></label>';
+        '<span>' + esc(Store.unitOption(u.no)) + '</span></label>';
     }).join('');
 
     var byCat = {};
@@ -195,6 +195,7 @@
     $('#t-delete').hidden = false;
     $('#t-thumb-wrap').hidden = !t.thumb;
     if (t.thumb) $('#t-thumb').src = t.thumb;
+    ticketKnowledge();
     showTab('log');
   }
 
@@ -206,6 +207,7 @@
     $('#t-delete').hidden = true;
     $('#t-thumb-wrap').hidden = true;
     $('#t-errors').hidden = true;
+    ticketKnowledge();
   }
 
   function submitForm(e) {
@@ -336,9 +338,7 @@
         '<div class="cap-fields">' +
           row('System', sys ? sys.no + '. ' + sys.name : f.systemNo, 'systemNo') +
           row('System id', f.systemId, 'systemId') +
-          row('Business units', (f.businessUnits || []).map(function (u) {
-            return u + ' ' + Store.unitShort(u);
-          }).join(', '), 'businessUnits') +
+          row('Business units', (f.businessUnits || []).map(Store.unitTag).join(', '), 'businessUnits') +
           row('Answer code', f.answerCode ? f.answerCode + (ans ? ' — ' + ans.label : ' (not in the code list)') : '', 'answerCode') +
           (f.priority ? row('Priority', f.priority, 'priority') : '') +
           (f.summary ? row('Summary', f.summary, 'summary') : '') +
@@ -435,6 +435,273 @@
     $('#cap-clear').addEventListener('click', function () { queue = []; renderQueue(); });
   }
 
+
+  /* ================= knowledge base ================= */
+
+  var editingKnowledgeId = null;
+
+  function buildKnowledgeOptions() {
+    var cfg = Store.getConfig();
+    var systemOpts = cfg.systems.map(function (s) {
+      return '<option value="' + s.no + '">' + esc(s.no + '. ' + s.name) + '</option>';
+    }).join('');
+
+    $('#k-q-system').innerHTML = '<option value="">Every application</option>' + systemOpts;
+    $('#k-system').innerHTML = '<option value="">Choose an application…</option>' + systemOpts;
+
+    [['#k-q-units', 'kqu'], ['#k-units', 'ku']].forEach(function (pair) {
+      $(pair[0]).innerHTML = cfg.businessUnits.map(function (u) {
+        return '<label class="check"><input type="checkbox" name="' + pair[1] + '" value="' + u.no + '"> ' +
+          '<span>' + esc(Store.unitOption(u.no)) + '</span></label>';
+      }).join('');
+    });
+  }
+
+  function checkedUnits(name) {
+    return $$('input[name="' + name + '"]:checked').map(function (i) { return Number(i.value); });
+  }
+
+  function setCheckedUnits(name, list) {
+    $$('input[name="' + name + '"]').forEach(function (i) {
+      i.checked = (list || []).indexOf(Number(i.value)) !== -1;
+    });
+  }
+
+  var WHY = {
+    exact:   'exactly these units',
+    covers:  'applies whenever its units are hit',
+    wider:   'recorded against a wider set',
+    partial: 'shares some units',
+    listed:  'recorded for this application'
+  };
+
+  function hit(r, opts) {
+    var e = r.entry, kind = r.match.kind;
+    var units = e.businessUnits.length ? e.businessUnits.map(Store.unitTag).join(', ') : 'no units';
+    return '<div class="kb-hit' + (kind === 'exact' ? ' is-exact' : '') + '"' +
+        (opts && opts.clickable ? ' data-id="' + esc(e.id) + '" style="cursor:pointer"' : '') + '>' +
+      '<span class="kb-q">Q' + esc(e.question) + '</span>' +
+      '<span class="kb-a">' + esc(e.answer) + '</span>' +
+      '<span class="kb-meta">' + (opts && opts.showSystem ? esc(e.systemName) + '<br>' : '') +
+        'units ' + esc(units) + '<br>' +
+        '<span class="kb-why is-' + kind + '">' + esc(WHY[kind] || kind) + '</span></span>' +
+      (e.notes ? '<span class="kb-notes">' + esc(e.notes) + '</span>' : '') +
+      '</div>';
+  }
+
+  function runLookup() {
+    var system = $('#k-q-system').value;
+    var units = checkedUnits('kqu');
+    var host = $('#k-results');
+
+    if (!Store.allKnowledge().length) {
+      host.innerHTML = '<p class="viz-empty">Nothing recorded yet. Add the first entry below and it will show up here.</p>';
+      return;
+    }
+
+    var results = Store.queryKnowledge(system, units);
+    if (!results.length) {
+      host.innerHTML = '<p class="viz-empty">No entry covers that combination. ' +
+        'Record one below and it will be here next time.</p>';
+      return;
+    }
+
+    var exact = results.filter(function (r) { return r.match.kind === 'exact'; }).length;
+    var lead = units.length
+      ? (exact ? exact + (exact === 1 ? ' answer matches' : ' answers match') + ' that combination exactly'
+               : 'Nothing matches exactly — the closest entries are below')
+      : results.length + (results.length === 1 ? ' entry' : ' entries') + ' recorded';
+
+    host.innerHTML = '<p class="field-hint" style="margin-bottom:8px">' + esc(lead) + '</p>' +
+      results.map(function (r) { return hit(r, { showSystem: !system, clickable: true }); }).join('');
+
+    $$('#k-results .kb-hit').forEach(function (node) {
+      node.addEventListener('click', function () { editKnowledge(node.getAttribute('data-id')); });
+    });
+  }
+
+  /* The same lookup, offered while a ticket is being logged. */
+  function ticketKnowledge() {
+    var host = $('#t-knowledge');
+    var system = $('#t-system').value;
+    var units = $$('#t-units input[name="bu"]:checked').map(function (i) { return Number(i.value); });
+    if (!system || !units.length || !Store.allKnowledge().length) { host.hidden = true; return; }
+
+    var results = Store.queryKnowledge(system, units)
+      .filter(function (r) { return r.match.rank >= 3; })
+      .slice(0, 4);
+    if (!results.length) { host.hidden = true; return; }
+
+    host.hidden = false;
+    host.innerHTML = '<h4>From the knowledge base</h4>' +
+      results.map(function (r) { return hit(r, {}); }).join('');
+  }
+
+  function knowledgeForm() {
+    return {
+      systemNo: $('#k-system').value,
+      businessUnits: checkedUnits('ku'),
+      question: $('#k-question').value,
+      answer: $('#k-answer').value,
+      notes: $('#k-notes').value
+    };
+  }
+
+  function resetKnowledgeForm() {
+    editingKnowledgeId = null;
+    $('#k-system').value = '';
+    setCheckedUnits('ku', []);
+    $('#k-question').value = '';
+    $('#k-answer').value = '';
+    $('#k-notes').value = '';
+    $('#k-errors').hidden = true;
+    $('#k-form-mode').textContent = 'New entry';
+    $('#k-save').textContent = 'Save entry';
+    $('#k-delete').hidden = true;
+  }
+
+  function editKnowledge(id) {
+    var e = Store.knowledgeById(id);
+    if (!e) return;
+    editingKnowledgeId = id;
+    $('#k-system').value = e.systemNo;
+    setCheckedUnits('ku', e.businessUnits);
+    $('#k-question').value = e.question;
+    $('#k-answer').value = e.answer;
+    $('#k-notes').value = e.notes;
+    $('#k-errors').hidden = true;
+    $('#k-form-mode').textContent = 'Editing ' + e.systemName + ' — question ' + e.question;
+    $('#k-save').textContent = 'Save changes';
+    $('#k-delete').hidden = false;
+    showTab('knowledge');
+    $('#k-question').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function saveKnowledgeEntry() {
+    var data = knowledgeForm();
+    var errs = [];
+    if (!data.systemNo) errs.push('Choose the application.');
+    if (!data.businessUnits.length) errs.push('Tick at least one impacted business unit.');
+    if (!data.question.trim()) errs.push('Enter the question number.');
+    if (!data.answer.trim()) errs.push('Enter the answer.');
+
+    var box = $('#k-errors');
+    if (errs.length) {
+      box.hidden = false;
+      box.innerHTML = '<ul>' + errs.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      return;
+    }
+
+    var clash = Store.findDuplicate({
+      id: editingKnowledgeId, systemNo: data.systemNo,
+      businessUnits: data.businessUnits, question: data.question.trim()
+    });
+    if (clash) {
+      if (!confirm('That application, those business units and question ' + data.question.trim() +
+          ' already answer "' + clash.answer + '". Replace that answer?')) return;
+      Store.updateKnowledge(clash.id, data);
+      Store.deleteKnowledge(editingKnowledgeId);
+      afterKnowledgeChange('Replaced the answer for question ' + data.question.trim());
+      return;
+    }
+
+    if (editingKnowledgeId) {
+      Store.updateKnowledge(editingKnowledgeId, data);
+      afterKnowledgeChange('Entry updated');
+    } else {
+      var e = Store.addKnowledge(data);
+      afterKnowledgeChange('Recorded question ' + e.question + ' for ' + e.systemName);
+    }
+  }
+
+  function afterKnowledgeChange(message) {
+    resetKnowledgeForm();
+    renderKnowledgeTable();
+    runLookup();
+    ticketKnowledge();
+    toast(message);
+  }
+
+  function renderKnowledgeTable() {
+    var host = $('#k-table');
+    var term = ($('#k-search').value || '').trim().toLowerCase();
+    var list = Store.allKnowledge().filter(function (e) {
+      if (!term) return true;
+      return [e.systemName, e.question, e.answer, e.notes, e.businessUnits.join(' ')]
+        .join(' ').toLowerCase().indexOf(term) !== -1;
+    });
+
+    $('#k-count').textContent = Store.allKnowledge().length
+      ? list.length + ' of ' + Store.allKnowledge().length + ' entries'
+      : '';
+
+    if (!list.length) {
+      host.innerHTML = '<p class="viz-empty">' +
+        (Store.allKnowledge().length ? 'Nothing matches that search.' : 'No entries recorded yet.') + '</p>';
+      return;
+    }
+
+    list = list.slice().sort(function (a, b) {
+      if (Number(a.systemNo) !== Number(b.systemNo)) return Number(a.systemNo) - Number(b.systemNo);
+      var u = Store.unitKey(a.businessUnits).localeCompare(Store.unitKey(b.businessUnits));
+      return u || Store.compareQuestion(a.question, b.question);
+    });
+
+    host.innerHTML = '<table class="grid"><thead><tr>' +
+      '<th>Application</th><th>Business units</th><th>Question</th><th>Answer</th><th>Notes</th>' +
+      '</tr></thead><tbody>' +
+      list.map(function (e) {
+        return '<tr data-id="' + esc(e.id) + '">' +
+          '<td>' + esc(e.systemNo + '. ' + e.systemName) + '</td>' +
+          '<td>' + e.businessUnits.map(function (u) {
+              return '<span class="chip">' + esc(Store.unitTag(u)) + '</span>';
+            }).join('') + '</td>' +
+          '<td class="num mono">' + esc(e.question) + '</td>' +
+          '<td class="mono">' + esc(e.answer) + '</td>' +
+          '<td class="summary">' + esc(e.notes || '—') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $$('#k-table tbody tr').forEach(function (tr) {
+      tr.addEventListener('click', function () { editKnowledge(tr.getAttribute('data-id')); });
+    });
+  }
+
+  function wireKnowledge() {
+    $('#k-q-system').addEventListener('change', runLookup);
+    $('#k-q-units').addEventListener('change', runLookup);
+    $('#k-q-clear').addEventListener('click', function () {
+      $('#k-q-system').value = '';
+      setCheckedUnits('kqu', []);
+      runLookup();
+    });
+
+    $('#k-save').addEventListener('click', saveKnowledgeEntry);
+    $('#k-reset').addEventListener('click', function () { resetKnowledgeForm(); toast('Form cleared'); });
+    $('#k-delete').addEventListener('click', function () {
+      if (!editingKnowledgeId || !confirm('Delete this entry?')) return;
+      Store.deleteKnowledge(editingKnowledgeId);
+      afterKnowledgeChange('Entry deleted');
+    });
+
+    var timer = null;
+    $('#k-search').addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(renderKnowledgeTable, 160);
+    });
+
+    $('#k-csv').addEventListener('click', function () {
+      var list = Store.allKnowledge();
+      if (!list.length) { toast('Nothing to export yet.', 'warning'); return; }
+      download('knowledge-base-' + new Date().toISOString().slice(0, 10) + '.csv',
+        Store.knowledgeToCSV(list), 'text/csv;charset=utf-8',
+        'Exported ' + list.length + ' entries');
+    });
+
+    $('#t-system').addEventListener('change', ticketKnowledge);
+    $('#t-units').addEventListener('change', ticketKnowledge);
+  }
+
   /* ================= reference data ================= */
 
   function renderReference() {
@@ -522,8 +789,11 @@
 
   function refreshEverything() {
     buildFormOptions();
+    buildKnowledgeOptions();
     Dash.buildFilterControls();
     Dash.render();
+    renderKnowledgeTable();
+    runLookup();
   }
 
   /* ================= data in / out ================= */
@@ -608,12 +878,47 @@
       toast('All tickets deleted');
     });
 
+    $('#d-clear-kb').addEventListener('click', function () {
+      var n = Store.allKnowledge().length;
+      if (!n) { toast('There are no entries to delete.'); return; }
+      if (!confirm('Delete all ' + n + ' knowledge base entries? Tickets are kept. This cannot be undone.')) return;
+      Store.clearKnowledge();
+      renderKnowledgeTable();
+      runLookup();
+      ticketKnowledge();
+      toast('Knowledge base emptied');
+    });
+
     $('#d-reset-ref').addEventListener('click', function () {
       if (!confirm('Restore the reference data that ships with the app? Tickets are kept.')) return;
       Store.resetConfig();
       renderReference();
       refreshEverything();
       toast('Reference data restored');
+    });
+  }
+
+  /* A handful of knowledge base entries so the lookup has something to
+     find. Invented, like the sample tickets. */
+  function demoKnowledge() {
+    var cfg = Store.getConfig();
+    var units = cfg.businessUnits.map(function (u) { return Number(u.no); });
+    var pairs = [
+      [1, [units[0], units[2]], '4',  'A#7/2'],
+      [1, [units[0], units[2]], '11', 'ZZ-04*'],
+      [1, [units[0]],           '2',  'Q1'],
+      [4, [units[1], units[3]], '7',  'B/2'],
+      [9, [units[0], units[2]], '4',  'N-9!'],
+      [9, [units[3]],           '15', 'K22/A'],
+      [12, [units[1]],          '3',  '#R-8']
+    ];
+    return pairs.filter(function (p) {
+      return p[1].every(function (u) { return u !== undefined; });
+    }).map(function (p) {
+      return {
+        systemNo: p[0], businessUnits: p[1], question: p[2], answer: p[3],
+        notes: 'Sample entry — delete these on the Data tab.'
+      };
     });
   }
 
@@ -677,6 +982,7 @@
      There is no folder beside it, so seed something to look at and be
      straight about what photo capture can and cannot do. */
   function singleFileSetup() {
+    if (!Store.allKnowledge().length) demoKnowledge().forEach(Store.addKnowledge);
     if (!Store.all().length) {
       Store.addMany(demoTickets(140));
       var banner = document.createElement('div');
@@ -709,8 +1015,12 @@
     applyTheme(Store.getPrefs().theme || 'system');
 
     buildFormOptions();
+    buildKnowledgeOptions();
     Dash.init({ onEdit: startEdit });
     resetForm();
+    resetKnowledgeForm();
+    renderKnowledgeTable();
+    runLookup();
     renderReference();
     renderQueue();
 
@@ -741,6 +1051,7 @@
     });
 
     wireCapture();
+    wireKnowledge();
     wireData();
 
     Store.on(function (what, detail) {
@@ -750,7 +1061,8 @@
     });
 
     var initial = location.hash.slice(1);
-    showTab(['dashboard', 'log', 'capture', 'reference', 'data'].indexOf(initial) !== -1 ? initial : 'dashboard');
+    showTab(['dashboard', 'log', 'capture', 'knowledge', 'reference', 'data'].indexOf(initial) !== -1
+      ? initial : 'dashboard');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

@@ -213,12 +213,17 @@ window.Charts = (function () {
     cells.forEach(function (r) { r.forEach(function (v) { max = Math.max(max, v); }); });
     if (!max) return empty(host, opts.emptyText);
 
-    var labelW = 170, headH = 82, gap = 3;
-    /* the rotated column headings run up and to the right of the last cell */
-    var rightPad = 92;
+    var labelW = 170, gap = 3;
+    /* Short headings sit upright; only long ones need turning, and a
+       turned heading runs up and to the right of the last column. */
+    var longest = Math.max.apply(null, cols.map(function (c) { return (c.short || '').length; }));
+    var turned = longest > 3;
+    var headH = turned ? 82 : 32;
+    var rightPad = turned ? 92 : 6;
+
     /* grow the cells to use the width available, within sensible bounds */
     var avail = (host.clientWidth || 640) - labelW - rightPad - 2;
-    var cell = Math.max(28, Math.min(48, Math.floor(avail / cols.length) - gap));
+    var cell = Math.max(28, Math.min(56, Math.floor(avail / cols.length) - gap));
     var width = labelW + cols.length * (cell + gap) + rightPad;
     var height = headH + rows.length * (cell + gap);
 
@@ -231,11 +236,10 @@ window.Charts = (function () {
 
     cols.forEach(function (c, j) {
       var cx = labelW + j * (cell + gap) + cell / 2;
-      var t = el('text', {
-        x: cx, y: headH - 10, class: 'viz-axis',
-        transform: 'rotate(-45 ' + cx + ' ' + (headH - 10) + ')', 'text-anchor': 'start'
-      }, svg);
-      t.textContent = c.short;
+      var cy = headH - 10;
+      var attrs = { x: cx, y: cy, class: 'viz-axis', 'text-anchor': turned ? 'start' : 'middle' };
+      if (turned) attrs.transform = 'rotate(-45 ' + cx + ' ' + cy + ')';
+      el('text', attrs, svg).textContent = c.short;
     });
 
     rows.forEach(function (r, i) {

@@ -19,6 +19,7 @@
     <button class="tab-btn" data-tab="dashboard" role="tab" aria-selected="false">Dashboard</button>
     <button class="tab-btn" data-tab="log"       role="tab" aria-selected="false">Log a ticket</button>
     <button class="tab-btn" data-tab="capture"   role="tab" aria-selected="false">Photo capture</button>
+    <button class="tab-btn" data-tab="knowledge" role="tab" aria-selected="false">Knowledge base</button>
     <button class="tab-btn" data-tab="reference" role="tab" aria-selected="false">Reference data</button>
     <button class="tab-btn" data-tab="data"      role="tab" aria-selected="false">Data</button>
   </nav>
@@ -145,7 +146,7 @@
       <div>
         <div class="field">
           <span style="display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
-            Business units impacted (1–10) *
+            Business units impacted (1–4) *
           </span>
           <div class="unit-grid" id="t-units"></div>
         </div>
@@ -159,6 +160,8 @@
           <label class="field"><span>Reported by</span><input id="t-reported" autocomplete="off"></label>
           <label class="field"><span>Logged by</span><input id="t-agent" autocomplete="off"></label>
         </div>
+
+        <div id="t-knowledge" class="kb-inline" hidden></div>
 
         <div class="thumb-preview" id="t-thumb-wrap" hidden>
           <img id="t-thumb" alt="Photograph this ticket came from">
@@ -232,19 +235,101 @@
   </div>
 </section>
 
+<!-- ============ KNOWLEDGE BASE ============ -->
+<section class="tab-panel" data-tab="knowledge" role="tabpanel" hidden>
+
+  <div class="panel">
+    <header>
+      <h2>Look up an answer</h2>
+      <span class="hint">choose the application and the business units it has hit</span>
+    </header>
+
+    <div class="lookup">
+      <label class="field">
+        <span>Application</span>
+        <select id="k-q-system"></select>
+      </label>
+      <div class="field">
+        <span class="field-label">Business units impacted</span>
+        <div class="unit-grid" id="k-q-units"></div>
+      </div>
+      <div class="lookup-actions">
+        <button type="button" class="btn ghost" id="k-q-clear">Clear</button>
+      </div>
+    </div>
+
+    <div id="k-results"></div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>Record an entry</h2>
+      <span class="hint" id="k-form-mode"></span>
+    </header>
+
+    <div class="errors" id="k-errors" hidden></div>
+
+    <div class="grid-2">
+      <div>
+        <label class="field">
+          <span>Application *</span>
+          <select id="k-system"></select>
+        </label>
+        <div class="field">
+          <span class="field-label">Business units impacted *</span>
+          <div class="unit-grid" id="k-units"></div>
+        </div>
+      </div>
+      <div>
+        <label class="field">
+          <span>Question number *</span>
+          <input id="k-question" autocomplete="off" placeholder="e.g. 4">
+        </label>
+        <label class="field">
+          <span>Answer *</span>
+          <input id="k-answer" class="mono" autocomplete="off" spellcheck="false" placeholder="letters, digits or symbols — recorded exactly as typed">
+        </label>
+        <label class="field">
+          <span>Notes</span>
+          <input id="k-notes" autocomplete="off" placeholder="optional">
+        </label>
+      </div>
+    </div>
+
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button type="button" class="btn primary" id="k-save">Save entry</button>
+      <button type="button" class="btn" id="k-reset">Clear form</button>
+      <button type="button" class="btn ghost" id="k-delete" hidden>Delete entry</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>Everything recorded</h2>
+      <span class="hint" id="k-count"></span>
+      <span class="spacer"></span>
+      <input type="search" id="k-search" placeholder="search answers, questions, systems…" style="max-width:260px">
+      <button class="btn tiny" id="k-csv">Export CSV</button>
+    </header>
+    <div class="table-wrap" id="k-table"></div>
+  </div>
+</section>
+
 <!-- ============ REFERENCE DATA ============ -->
 <section class="tab-panel" data-tab="reference" role="tabpanel" hidden>
   <div class="panel">
     <header>
       <h2>Reference data</h2>
-      <span class="hint">the 22 systems and their codes, 10 business units, and the answer code list</span>
+      <span class="hint">the 22 systems and their codes, the 4 business units, and the answer code list</span>
       <span class="spacer"></span>
       <button class="btn primary" id="ref-save">Save reference data</button>
     </header>
     <p class="field-hint">
       The systems and their configuration item codes are the ones from the configuration item
       sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
-      them here when you have them. Business unit names and answer codes are still placeholders.
+      them here when you have them. The four business units are named as they are on the sheet —
+      1 to 4 — so give them words here if you would rather read them that way. The answer codes
+      are a starter list; replace them with yours.
       A code identifies its system, so two systems cannot share one; a ticket whose code differs
       from the one on record is flagged, never blocked. Changes are saved in this browser — use
       the Data tab to export them for a colleague.
@@ -257,7 +342,7 @@
   </div>
 
   <div class="panel">
-    <header><h3>Business units (1–10)</h3></header>
+    <header><h3>Business units (1–4)</h3></header>
     <div class="scroll-x" id="ref-units"></div>
   </div>
 
@@ -275,7 +360,7 @@
 <section class="tab-panel" data-tab="data" role="tabpanel" hidden>
   <div class="panel">
     <header><h2>Export</h2></header>
-    <p class="field-hint">CSV gives you the tickets currently shown on the dashboard, filters and all. The JSON backup carries every ticket plus your reference data.</p>
+    <p class="field-hint">CSV gives you the tickets currently shown on the dashboard, filters and all. The JSON backup carries every ticket, every knowledge base entry and your reference data.</p>
     <div class="capture-actions" style="justify-content:flex-start">
       <button class="btn primary" id="d-csv">Export filtered tickets (CSV)</button>
       <button class="btn" id="d-json">Export everything (JSON)</button>
@@ -302,6 +387,7 @@
       <button class="btn" id="d-demo">Add 140 sample tickets</button>
       <button class="btn ghost" id="d-reset-ref">Restore default reference data</button>
       <button class="btn ghost" id="d-clear">Delete all tickets</button>
+      <button class="btn ghost" id="d-clear-kb">Delete all knowledge entries</button>
     </div>
     <p class="field-hint" style="margin-top:10px">
       Tickets live in this browser's local storage — nothing is sent anywhere. Export a JSON backup

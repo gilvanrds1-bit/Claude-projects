@@ -39,7 +39,9 @@ window.Dashboard = (function () {
   function buildFilterControls() {
     var cfg = window.Store.getConfig();
     fill('#f-system', cfg.systems.map(function (s) { return { v: s.no, t: s.no + '. ' + s.name }; }), 'All systems');
-    fill('#f-unit', cfg.businessUnits.map(function (u) { return { v: u.no, t: u.no + '. ' + u.name }; }), 'All business units');
+    fill('#f-unit', cfg.businessUnits.map(function (u) {
+      return { v: u.no, t: window.Store.unitOption(u.no) };
+    }), 'All business units');
     fill('#f-answer', cfg.answerCodes.map(function (a) { return { v: a.code, t: a.code + ' — ' + a.label }; }), 'All answer codes');
     fill('#f-status', cfg.statuses.map(function (s) { return { v: s, t: s }; }), 'Any status');
     fill('#f-priority', cfg.priorities.map(function (p) { return { v: p, t: p }; }), 'Any priority');

@@ -36,14 +36,14 @@ Date: 03/09/2026
 System No: 5
 System Name: Sham
 Configuration Item: SH-1
-Business Units: 1, 6 and 10
+Business Units: 1, 3 and 4
 Answer Code: 2001
 Priority: P2
 Status: In progress
 Reported by: L. Fernandes
 Issue: Direct debit run rejected 400 accounts overnight
 `, {
-  systemNo: 5, systemId: 'SH-1', businessUnits: [1, 6, 10],
+  systemNo: 5, systemId: 'SH-1', businessUnits: [1, 3, 4],
   answerCode: '2001', priority: 'P2', status: 'In progress'
 });
 
@@ -51,22 +51,22 @@ Issue: Direct debit run rejected 400 accounts overnight
 run('OCR noise (O/l/S for digits)', `
 System No: l2
 Item Code: lZ-l
-Business Units: 2, 8
+Business Units: 2, 4
 Answer Code: 3O1O
 Priority: Pl
 Issue: Depot link down since O6:00
 `, {
-  systemNo: 12, systemId: 'IZ-1', businessUnits: [2, 8], answerCode: '3010', priority: 'P1'
+  systemNo: 12, systemId: 'IZ-1', businessUnits: [2, 4], answerCode: '3010', priority: 'P1'
 });
 
 /* 3. No labels at all — everything has to be inferred. */
 run('unlabelled scrawl', `
 Rastaban
 RD-1
-impacts Field Operations and Asset Management
+business units 2 and 3
 closed 4010
 `, {
-  systemNo: 6, systemId: 'RD-1', businessUnits: [2, 5], answerCode: '4010'
+  systemNo: 6, systemId: 'RD-1', businessUnits: [2, 3], answerCode: '4010'
 });
 
 /* 4. The code alone identifies the system. */
@@ -95,7 +95,7 @@ check('Nunki not read as Nash', nunki.fields.systemNo, 9);
 run('system named, code missing from the photo', `
 System No: 1
 System Name: Castor
-Business Units: 6
+Business Units: 3
 Answer Code: 5010
 `, { systemNo: 1, systemId: 'CA-1' });
 
@@ -103,9 +103,9 @@ Answer Code: 5010
 const r7 = run('missing answer code', `
 System No: 7
 Item Code: PO-1
-Business Units: 8
+Business Units: 2
 Issue: Approvals queue stuck
-`, { systemNo: 7, systemId: 'PO-1', businessUnits: [8] });
+`, { systemNo: 7, systemId: 'PO-1', businessUnits: [2] });
 check('answerCode absent', r7.fields.answerCode, undefined);
 check('flagged as missing', r7.missing, ['answerCode']);
 
@@ -122,7 +122,7 @@ check('no answer code invented', r8.fields.answerCode, undefined);
 const r9 = run('code contradicts the system number', `
 System No: 2
 Item Code: TZ-1
-Business Units: 9
+Business Units: 4
 Answer Code: 5010
 `, {});
 check('conflict noted', r9.notes.some(n => /belongs to system 14/.test(n)), true);
@@ -136,13 +136,27 @@ Answer Code: 7777
 `, { answerCode: '7777' });
 check('unknown code noted', r10.notes.some(n => /not in the code list/.test(n)), true);
 
-/* 11. Named business units only, no numbers. */
-run('business units by name', `
+/* 11. Generic unit names must not tick every box. */
+const r11 = run('generic unit names match on the number only', `
 System No: 13
 Item Code: EA-1
-Business Units: People & HR, Finance
+Business Units: 3 and 4
 Answer Code: 1002
-`, { businessUnits: [6, 7] });
+`, { businessUnits: [3, 4] });
+check('no runaway unit match', r11.fields.businessUnits.length, 2);
+
+/* 11b. Once units are named, the names are matched too. */
+const named = { businessUnits: [
+  { no: 1, name: 'Customer Operations', short: 'Cust Ops' },
+  { no: 2, name: 'Field Operations', short: 'Field Ops' },
+  { no: 3, name: 'Finance', short: 'Finance' }
+]};
+check('named units matched by name',
+  OCR._internals.parseUnitList('Field Operations and Finance', named.businessUnits), [2, 3]);
+check('a unit named "3" is never picked out of prose',
+  OCR._internals.parseUnitList('reference 3 of the 2026 report', CONFIG.businessUnits), [3]);
+check('numeric names are not matched as words',
+  OCR._internals.parseUnitList('no numbers here at all', CONFIG.businessUnits), []);
 
 /* 12. A system with no code recorded must still be loggable. */
 const r12 = run('system with no code recorded', `
@@ -179,12 +193,12 @@ run('lost colons and glued digits', `
 System No :9
 System Name : Nunki
 Configuration Item : NN-1
-Business Units :3,4and 9
+Business Units :1,2and 4
 Answer Code 12010
 Priority :P2
 Issue: Overnight extract did not reach the reporting store
 `, {
-  systemNo: 9, systemId: 'NN-1', businessUnits: [3, 4, 9],
+  systemNo: 9, systemId: 'NN-1', businessUnits: [1, 2, 4],
   answerCode: '2010', priority: 'P2'
 });
 
@@ -192,9 +206,9 @@ Issue: Overnight extract did not reach the reporting store
 run('label with no separator', `
 System No 14
 Item Code TZ-1
-Business Units 5 and 6
+Business Units 3 and 4
 Answer Code 4030
-`, { systemNo: 14, systemId: 'TZ-1', businessUnits: [5, 6], answerCode: '4030' });
+`, { systemNo: 14, systemId: 'TZ-1', businessUnits: [3, 4], answerCode: '4030' });
 
 /* 17. A five digit run that contains no known code must not be trimmed
        into one — better to report nothing than to invent a code. */

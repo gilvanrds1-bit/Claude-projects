@@ -300,11 +300,27 @@ window.OCR = (function () {
       n = Number(n);
       if (n >= 1 && n <= units.length + 90 && units.some(function (u) { return Number(u.no) === n; })) found[n] = true;
     });
-    /* named units */
+    /* named units — but only on words that actually distinguish one unit
+       from another. A unit still called "Business unit 4" is identified by
+       its number alone; matching on "business" or "unit" would tick every
+       box on the form. */
     units.forEach(function (u) {
-      if (tokenScore(u.name, v) >= 0.75 || (u.short && tokenScore(u.short, v) >= 0.9)) found[u.no] = true;
+      if (unitNameMatches(u.name, v)) found[u.no] = true;
     });
     return Object.keys(found).map(Number).sort(function (a, b) { return a - b; });
+  }
+
+  var UNIT_STOPWORDS = ['business', 'unit', 'units', 'area', 'areas',
+                        'department', 'dept', 'team', 'division', 'group'];
+
+  function unitNameMatches(name, text) {
+    var tokens = key(name).split(' ').filter(function (t) {
+      return t.length > 2 && UNIT_STOPWORDS.indexOf(t) === -1;
+    });
+    if (!tokens.length) return false;
+    var h = key(text);
+    var hit = tokens.filter(function (t) { return h.indexOf(t) !== -1; }).length;
+    return hit / tokens.length >= 0.75;
   }
 
   /**
@@ -398,9 +414,10 @@ window.OCR = (function () {
       if (buLine) units = parseUnitList(buLine.replace(/business\s*units?/ig, ''), config.businessUnits);
     }
     if (!units.length) units = parseUnitList(whole, config.businessUnits).filter(function (n) {
-      /* only accept name matches from free text, never bare numbers */
+      /* only accept name matches from free text, never bare numbers — a
+         unit named just "3" is therefore never picked out of prose */
       var u = config.businessUnits.filter(function (x) { return Number(x.no) === n; })[0];
-      return u && tokenScore(u.name, whole) >= 0.75;
+      return u && unitNameMatches(u.name, whole);
     });
     if (units.length) set('businessUnits', units, pairs.businessUnits ? 'read from a labelled field' : 'matched unit names in the text');
 
