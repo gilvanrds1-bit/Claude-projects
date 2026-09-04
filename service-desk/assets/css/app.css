@@ -296,6 +296,36 @@ label.field > span { display: block; font-size: 12.5px; font-weight: 600; color:
 .pri-P3 { color: var(--text-secondary); }
 .pri-P4 { color: var(--text-muted); }
 
+.field-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+
+/* ---------------- knowledge base ---------------- */
+
+.lookup { display: grid; grid-template-columns: minmax(200px, 300px) 1fr auto; gap: 16px; align-items: start; margin-bottom: 12px; }
+.lookup-actions { padding-top: 22px; }
+@media (max-width: 760px) { .lookup { grid-template-columns: 1fr; } .lookup-actions { padding-top: 0; } }
+
+.kb-hit {
+  display: grid; grid-template-columns: 48px 1fr auto; gap: 8px 14px;
+  align-items: baseline; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 8px; background: var(--surface-1);
+}
+.kb-hit.is-exact { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.kb-q { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kb-a { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--text-primary); word-break: break-all; }
+.kb-meta { font-size: 12px; color: var(--text-muted); text-align: right; white-space: nowrap; }
+.kb-notes { grid-column: 2 / -1; font-size: 12.5px; color: var(--text-secondary); }
+.kb-why { font-size: 11.5px; }
+.kb-why.is-exact   { color: var(--status-good); font-weight: 600; }
+.kb-why.is-covers  { color: var(--accent); }
+.kb-why.is-wider,
+.kb-why.is-partial { color: var(--text-muted); }
+
+.kb-inline { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); padding: 10px 12px; margin-bottom: 12px; }
+.kb-inline h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); font-weight: 650; }
+.kb-inline .kb-hit { background: var(--surface-1); margin-bottom: 6px; }
+.kb-inline .kb-hit:last-child { margin-bottom: 0; }
+
 /* ---------------- capture ---------------- */
 
 .drop-zone {

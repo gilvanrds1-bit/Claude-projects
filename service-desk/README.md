@@ -33,7 +33,7 @@ node build.js
 
 ---
 
-## The five tabs
+## The six tabs
 
 ### Dashboard
 Six headline tiles, then the charts:
@@ -83,14 +83,40 @@ It will not invent a value. A field it cannot read is flagged, and the ticket st
 `docs/ticket-form.html` prints a blank ticket laid out the way the reader expects — worth
 using if you want the highest hit rate.
 
+### Knowledge base
+A separate store from the tickets. Each entry records **an application, the business units it
+impacts, a question number and the answer** — answers are free text, so letters, digits and
+symbols like `A#7/2` or `§9/AB-*` are kept exactly as typed and never reformatted.
+
+Look one up by choosing the application and ticking the impacted units. Results are ranked, and
+each says why it matched:
+
+| | |
+|---|---|
+| **exactly these units** | the impacted units are precisely the ones recorded |
+| **applies whenever its units are hit** | everything the entry needs is impacted, and more besides |
+| **recorded against a wider set** | the entry covers these units and others |
+| **shares some units** | partial overlap, shown last |
+
+Anything with no unit in common is not returned at all. Leave the application on *Every
+application* to search across all of them, or tick no units to list everything recorded against
+one. Click any result to edit it.
+
+The trio of **application + impacted units + question number** is the key: recording the same
+trio twice offers to replace the existing answer rather than quietly creating a second one.
+
+The same lookup runs quietly on the **Log a ticket** tab — pick a system, tick the units, and any
+answer that applies appears beside the form, which is the point of keeping the database at all.
+
 ### Reference data
 Your 22 systems and their codes, the 4 business units and the answer code list, all editable
 in place. Systems and business units are real; the answer codes are still a starter list — see
 the note below.
 
 ### Data
-CSV export of whatever the dashboard is currently showing, a full JSON backup (tickets plus
-reference data), import, sample data for a look around, and the delete buttons.
+CSV export of whatever the dashboard is currently showing, a full JSON backup (tickets,
+knowledge base and reference data together), import, sample data for a look around, and the
+delete buttons. The knowledge base has its own CSV export on its own tab.
 
 ---
 
@@ -149,18 +175,25 @@ docs/ticket-form.html          printable blank ticket
 build.js                       folds the app into one portable file
 dist/                          that single-file build
 test/parser.test.js            tests for the photo parser
+test/knowledge.test.js         tests for the knowledge base lookup
 ```
 
 ## Tests
 
 ```sh
 node test/parser.test.js
+node test/knowledge.test.js
 ```
 
 44 assertions over fourteen realistic tickets: clean printed forms, phone-photo noise where `O`
 becomes `0` and `l` becomes `1`, unlabelled scrawl, a code standing in for the whole system,
 `NN-1` against `NN-2`, a system with no code recorded, missing fields, a year that must not be
 mistaken for an answer code, and a code that disagrees with the system number written beside it.
+
+The knowledge base tests cover the lookup: exact combinations first, the ranking below them,
+a query narrower than the entry, partial overlap, scoping to one application against searching
+them all, question numbers sorting as numbers so 2 comes before 11, symbols surviving a round
+trip, and the duplicate key.
 
 ## Browser support
 

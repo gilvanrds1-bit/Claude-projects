@@ -6,10 +6,12 @@
 
 window.Store = (function () {
   var K_TICKETS = 'sdp.tickets.v1';
+  var K_KNOW    = 'sdp.knowledge.v1';
   var K_CONFIG  = 'sdp.config.v1';
   var K_PREFS   = 'sdp.prefs.v1';
 
   var tickets = [];
+  var knowledge = [];
   var config  = null;
   var prefs   = { theme: 'system', autoAdd: true, lastAgent: '' };
   var listeners = [];
@@ -38,13 +40,15 @@ window.Store = (function () {
   }
 
   function load() {
-    config  = readJSON(K_CONFIG, null) || deepCopy(window.SDP_DEFAULT_CONFIG);
-    tickets = readJSON(K_TICKETS, []);
-    prefs   = Object.assign(prefs, readJSON(K_PREFS, {}));
-    return { config: config, tickets: tickets, prefs: prefs };
+    config    = readJSON(K_CONFIG, null) || deepCopy(window.SDP_DEFAULT_CONFIG);
+    tickets   = readJSON(K_TICKETS, []);
+    knowledge = readJSON(K_KNOW, []);
+    prefs     = Object.assign(prefs, readJSON(K_PREFS, {}));
+    return { config: config, tickets: tickets, knowledge: knowledge, prefs: prefs };
   }
 
   function saveTickets() { writeJSON(K_TICKETS, tickets); notify('tickets'); }
+  function saveKnowledge() { writeJSON(K_KNOW, knowledge); notify('knowledge'); }
   function saveConfig()  { writeJSON(K_CONFIG, config);   notify('config'); }
   function savePrefs()   { writeJSON(K_PREFS, prefs); }
 
@@ -97,6 +101,14 @@ window.Store = (function () {
   function unitShort(no) {
     var u = unitByNo(no);
     return u ? (u.short || u.name) : 'BU ' + no;
+  }
+
+  /* "4. Field Ops", but "Unit 4" when the unit is named after its own
+     number — nothing should read as "4. 4". */
+  function unitOption(no) {
+    var u = unitByNo(no);
+    if (!u) return 'Business unit ' + no;
+    return u.name === String(u.no) ? 'Unit ' + u.no : u.no + '. ' + u.name;
   }
 
   /* "4 Field Ops", but just "BU 4" when the short name already carries
@@ -355,6 +367,138 @@ window.Store = (function () {
     };
   }
 
+
+  /* ================= knowledge base =================
+     One entry records: for this system, when these business units are
+     impacted, the question number and its answer. Answers are free text
+     — letters, digits, symbols, whatever the sheet says — and are never
+     reformatted. */
+
+  function unitKey(list) {
+    return (list || []).map(Number).filter(function (n) { return !isNaN(n); })
+      .filter(function (n, i, a) { return a.indexOf(n) === i; })
+      .sort(function (a, b) { return a - b; }).join(',');
+  }
+
+  function normaliseEntry(e) {
+    var units = unitKey(e.businessUnits);
+    var sys = systemByNo(e.systemNo);
+    return {
+      id:            e.id || ('k_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+      systemNo:      Number(e.systemNo),
+      systemName:    sys ? sys.name : (e.systemName || ''),
+      businessUnits: units ? units.split(',').map(Number) : [],
+      question:      String(e.question == null ? '' : e.question).trim(),
+      answer:        String(e.answer == null ? '' : e.answer).trim(),
+      notes:         String(e.notes || '').trim(),
+      updatedAt:     new Date().toISOString()
+    };
+  }
+
+  function allKnowledge() { return knowledge.slice(); }
+
+  function knowledgeById(id) {
+    return knowledge.filter(function (e) { return e.id === id; })[0] || null;
+  }
+
+  /* An entry is the same entry when the system, the impacted units and
+     the question number all match — that trio is the key. */
+  function findDuplicate(entry) {
+    return knowledge.filter(function (e) {
+      return e.id !== entry.id &&
+        Number(e.systemNo) === Number(entry.systemNo) &&
+        unitKey(e.businessUnits) === unitKey(entry.businessUnits) &&
+        e.question.toLowerCase() === entry.question.toLowerCase();
+    })[0] || null;
+  }
+
+  function addKnowledge(raw) {
+    var e = normaliseEntry(raw);
+    knowledge.push(e);
+    saveKnowledge();
+    return e;
+  }
+
+  function updateKnowledge(id, patch) {
+    for (var i = 0; i < knowledge.length; i++) {
+      if (knowledge[i].id === id) {
+        knowledge[i] = normaliseEntry(Object.assign({}, knowledge[i], patch, { id: id }));
+        saveKnowledge();
+        return knowledge[i];
+      }
+    }
+    return null;
+  }
+
+  function deleteKnowledge(id) {
+    var before = knowledge.length;
+    knowledge = knowledge.filter(function (e) { return e.id !== id; });
+    if (knowledge.length !== before) saveKnowledge();
+  }
+
+  function clearKnowledge() { knowledge = []; saveKnowledge(); }
+
+  /* How well does one entry answer this question?
+       exact    — the impacted units are precisely the ones recorded
+       covers   — everything the entry needs is impacted, and more besides
+       partial  — some units in common
+     Anything with nothing in common is not returned at all. */
+  function matchQuality(entryUnits, queryUnits) {
+    var e = (entryUnits || []).map(Number);
+    var q = (queryUnits || []).map(Number);
+    if (!q.length) return { rank: 1, kind: 'listed', shared: e };
+    var shared = e.filter(function (n) { return q.indexOf(n) !== -1; });
+    if (!shared.length) return { rank: 0, kind: 'none', shared: [] };
+    if (unitKey(e) === unitKey(q)) return { rank: 4, kind: 'exact', shared: shared };
+    if (shared.length === e.length) return { rank: 3, kind: 'covers', shared: shared };
+    if (shared.length === q.length) return { rank: 2, kind: 'wider', shared: shared };
+    return { rank: 1, kind: 'partial', shared: shared };
+  }
+
+  /* Question numbers sort as numbers when they look like numbers. */
+  function compareQuestion(a, b) {
+    var na = parseFloat(a), nb = parseFloat(b);
+    var aNum = !isNaN(na) && /^\s*[\d.]/.test(a);
+    var bNum = !isNaN(nb) && /^\s*[\d.]/.test(b);
+    if (aNum && bNum && na !== nb) return na - nb;
+    if (aNum !== bNum) return aNum ? -1 : 1;
+    return String(a).localeCompare(String(b));
+  }
+
+  /**
+   * Look up answers. Pass the system (or nothing, to search them all)
+   * and the impacted business units. Best matches come back first.
+   */
+  function queryKnowledge(systemNo, unitNos) {
+    var sys = systemNo === '' || systemNo === null || systemNo === undefined
+      ? null : Number(systemNo);
+    return knowledge
+      .filter(function (e) { return sys === null || Number(e.systemNo) === sys; })
+      .map(function (e) { return { entry: e, match: matchQuality(e.businessUnits, unitNos) }; })
+      .filter(function (r) { return r.match.rank > 0; })
+      .sort(function (a, b) {
+        if (a.match.rank !== b.match.rank) return b.match.rank - a.match.rank;
+        if (Number(a.entry.systemNo) !== Number(b.entry.systemNo)) {
+          return Number(a.entry.systemNo) - Number(b.entry.systemNo);
+        }
+        return compareQuestion(a.entry.question, b.entry.question);
+      });
+  }
+
+  function knowledgeToCSV(list) {
+    var head = ['System no', 'System name', 'Business units', 'Question', 'Answer', 'Notes', 'Updated'];
+    var rows = list.map(function (e) {
+      return [e.systemNo, e.systemName, e.businessUnits.join(' '),
+              e.question, e.answer, e.notes, e.updatedAt];
+    });
+    return [head].concat(rows).map(function (r) {
+      return r.map(function (cell) {
+        var s = String(cell == null ? '' : cell);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',');
+    }).join('\n');
+  }
+
   /* ---------------- import / export ---------------- */
 
   function toCSV(list) {
@@ -384,7 +528,8 @@ window.Store = (function () {
       exportedAt: new Date().toISOString(),
       version: 1,
       config: config,
-      tickets: tickets
+      tickets: tickets,
+      knowledge: knowledge
     };
   }
 
@@ -392,7 +537,22 @@ window.Store = (function () {
     if (!bundle || typeof bundle !== 'object') throw new Error('Not a valid export file.');
     var incoming = Array.isArray(bundle) ? bundle : (bundle.tickets || []);
     if (bundle.config && bundle.config.systems) { config = bundle.config; saveConfig(); }
-    if (mode === 'replace') tickets = [];
+    if (mode === 'replace') { tickets = []; knowledge = []; }
+
+    if (Array.isArray(bundle.knowledge)) {
+      var seenKey = {};
+      knowledge.forEach(function (e) {
+        seenKey[e.systemNo + '|' + unitKey(e.businessUnits) + '|' + e.question.toLowerCase()] = true;
+      });
+      bundle.knowledge.forEach(function (raw) {
+        var e = normaliseEntry(raw);
+        var k = e.systemNo + '|' + unitKey(e.businessUnits) + '|' + e.question.toLowerCase();
+        if (seenKey[k]) return;
+        seenKey[k] = true;
+        knowledge.push(e);
+      });
+      saveKnowledge();
+    }
     var existing = {};
     tickets.forEach(function (t) { existing[t.ref] = true; });
     var added = 0;
@@ -416,7 +576,7 @@ window.Store = (function () {
     getPrefs: getPrefs, setPref: setPref,
     systemByNo: systemByNo, unitByNo: unitByNo, answerByCode: answerByCode,
     systemLabel: systemLabel, unitLabel: unitLabel, unitShort: unitShort,
-    answerLabel: answerLabel, unitTag: unitTag, validateSystemId: validateSystemId,
+    answerLabel: answerLabel, unitTag: unitTag, unitOption: unitOption, validateSystemId: validateSystemId,
     nextRef: nextRef, addTicket: addTicket, addMany: addMany,
     updateTicket: updateTicket, deleteTicket: deleteTicket, clearTickets: clearTickets,
     all: all, byId: byId,
@@ -424,6 +584,11 @@ window.Store = (function () {
     countBySystem: countBySystem, countByUnit: countByUnit, countByAnswer: countByAnswer,
     countByField: countByField, countByDay: countByDay, impactMatrix: impactMatrix,
     summary: summary,
-    toCSV: toCSV, exportBundle: exportBundle, importBundle: importBundle
+    toCSV: toCSV, exportBundle: exportBundle, importBundle: importBundle,
+    allKnowledge: allKnowledge, knowledgeById: knowledgeById, findDuplicate: findDuplicate,
+    addKnowledge: addKnowledge, updateKnowledge: updateKnowledge,
+    deleteKnowledge: deleteKnowledge, clearKnowledge: clearKnowledge,
+    queryKnowledge: queryKnowledge, matchQuality: matchQuality,
+    unitKey: unitKey, compareQuestion: compareQuestion, knowledgeToCSV: knowledgeToCSV
   };
 })();
