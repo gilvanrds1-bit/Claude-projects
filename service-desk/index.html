@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Desk — ticket logging &amp; intelligence</title>
+<meta name="description" content="Log service desk tickets by hand or by photograph, and see which systems and business units are taking the strain.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎫</text></svg>">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>Service Desk</h1>
+    <small>ticket logging &amp; intelligence</small>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab-btn" data-tab="dashboard" role="tab" aria-selected="false">Dashboard</button>
+    <button class="tab-btn" data-tab="log"       role="tab" aria-selected="false">Log a ticket</button>
+    <button class="tab-btn" data-tab="capture"   role="tab" aria-selected="false">Photo capture</button>
+    <button class="tab-btn" data-tab="reference" role="tab" aria-selected="false">Reference data</button>
+    <button class="tab-btn" data-tab="data"      role="tab" aria-selected="false">Data</button>
+  </nav>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="theme-btn" title="Light, dark or follow the system">Auto</button>
+</header>
+
+<main>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="tab-panel" data-tab="dashboard" role="tabpanel" hidden>
+
+  <div class="panel">
+    <header>
+      <h2>Filters</h2>
+      <span class="hint">Every chart below is clickable — a bar or a cell sets the filter for you.</span>
+    </header>
+    <div class="filters">
+      <label><span>System</span><select id="f-system"></select></label>
+      <label><span>Business unit</span><select id="f-unit"></select></label>
+      <label><span>Answer code</span><select id="f-answer"></select></label>
+      <label><span>Status</span><select id="f-status"></select></label>
+      <label><span>Priority</span><select id="f-priority"></select></label>
+      <span class="filter-dates">
+        <label><span>Logged from</span><input type="date" id="f-from"></label>
+        <label><span>to</span><input type="date" id="f-to"></label>
+      </span>
+      <label><span>Search</span><input type="search" id="f-text" placeholder="reference, id, words…"></label>
+      <button class="btn ghost" id="f-clear">Clear</button>
+      <span id="filter-count">No filters</span>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+  <p class="insight" id="insight"></p>
+
+  <div class="grid-3">
+    <div class="panel">
+      <header><h2>Tickets by system</h2><span class="hint">which of the 22 systems is costing you most</span></header>
+      <div id="chart-systems"></div>
+    </div>
+    <div>
+      <div class="panel">
+        <header><h2>Tickets logged per day</h2></header>
+        <div id="chart-trend"></div>
+      </div>
+      <div class="panel">
+        <header><h2>Priority mix</h2></header>
+        <div id="chart-priority"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <header><h2>Business units impacted</h2><span class="hint">a ticket can hit more than one</span></header>
+      <div id="chart-units"></div>
+    </div>
+    <div class="panel">
+      <header><h2>Answer codes</h2><span class="hint">top ten by volume</span></header>
+      <div id="chart-answers"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>System against business unit</h2>
+      <span class="hint">darker means more tickets — this is where a system's pain actually lands</span>
+    </header>
+    <div class="scroll-x" id="chart-heatmap"></div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>Ticket log</h2>
+      <span class="hint" id="table-count"></span>
+      <span class="spacer"></span>
+      <span class="hint">click a row to edit it</span>
+    </header>
+    <div class="table-wrap" id="table-host"></div>
+  </div>
+</section>
+
+<!-- ============ LOG A TICKET ============ -->
+<section class="tab-panel" data-tab="log" role="tabpanel" hidden>
+  <form class="panel" id="ticket-form" novalidate>
+    <header>
+      <h2>Ticket details</h2>
+      <span class="hint" id="form-mode"></span>
+    </header>
+
+    <div class="errors" id="t-errors" hidden></div>
+
+    <div class="grid-2">
+      <div>
+        <label class="field">
+          <span>System (1–22) *</span>
+          <select id="t-system" required></select>
+          <span class="field-hint" id="t-system-hint">The system number and name travel together.</span>
+        </label>
+
+        <label class="field">
+          <span>Configuration item code</span>
+          <input id="t-system-id" autocomplete="off">
+          <span class="field-hint" id="t-system-id-hint">Choose a system and its code appears here.</span>
+          <span class="field-warn" id="t-system-id-warn" hidden></span>
+        </label>
+
+        <label class="field">
+          <span>Answer code (4 digits) *</span>
+          <select id="t-answer" required></select>
+        </label>
+
+        <div class="grid-2">
+          <label class="field"><span>Priority</span><select id="t-priority"></select></label>
+          <label class="field"><span>Status</span><select id="t-status"></select></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Channel</span><select id="t-channel"></select></label>
+          <label class="field"><span>Logged at</span><input type="datetime-local" id="t-when"></label>
+        </div>
+      </div>
+
+      <div>
+        <div class="field">
+          <span style="display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+            Business units impacted (1–10) *
+          </span>
+          <div class="unit-grid" id="t-units"></div>
+        </div>
+
+        <label class="field">
+          <span>What happened</span>
+          <textarea id="t-summary" placeholder="One line the next person can act on."></textarea>
+        </label>
+
+        <div class="grid-2">
+          <label class="field"><span>Reported by</span><input id="t-reported" autocomplete="off"></label>
+          <label class="field"><span>Logged by</span><input id="t-agent" autocomplete="off"></label>
+        </div>
+
+        <div class="thumb-preview" id="t-thumb-wrap" hidden>
+          <img id="t-thumb" alt="Photograph this ticket came from">
+        </div>
+      </div>
+    </div>
+
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button type="submit" class="btn primary" id="t-submit">Log ticket</button>
+      <button type="button" class="btn" id="t-reset">Clear</button>
+      <button type="button" class="btn ghost" id="t-delete" hidden>Delete ticket</button>
+    </div>
+  </form>
+</section>
+
+<!-- ============ PHOTO CAPTURE ============ -->
+<section class="tab-panel" data-tab="capture" role="tabpanel" hidden>
+  <div class="panel">
+    <header>
+      <h2>Photograph a ticket</h2>
+      <span class="hint">the fields are read off the picture and go straight onto the dashboard</span>
+    </header>
+
+    <div class="drop-zone" id="cap-zone">
+      <div class="capture-actions">
+        <span class="btn primary file-btn">
+          Take a photo
+          <input type="file" id="cap-input" accept="image/*" capture="environment" multiple>
+        </span>
+        <span class="btn file-btn">
+          Choose images
+          <input type="file" id="cap-file" accept="image/*" multiple>
+        </span>
+      </div>
+      <p>Or drag photos here, or paste one from the clipboard. Several at once is fine — each photo becomes one ticket.</p>
+    </div>
+
+    <div id="cap-status"></div>
+
+    <p class="field-hint" style="margin-top:12px">
+      Reading happens entirely in your browser — no photo ever leaves this device, and no part of this needs the internet.
+      For the best results photograph the ticket square on, in good light, with the whole form in frame.
+    </p>
+
+    <label class="check" style="margin-top:8px">
+      <input type="checkbox" id="cap-auto">
+      <span>Add to the dashboard automatically when every key field is read cleanly</span>
+    </label>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>Waiting to be confirmed</h2>
+      <span class="hint" id="cap-queue-count"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost tiny" id="cap-clear">Discard all</button>
+    </header>
+    <div id="cap-queue"></div>
+  </div>
+
+  <div class="panel">
+    <header><h2>What the reader looks for</h2></header>
+    <p class="field-hint">
+      Any of these labels on the paper ticket will be picked up, with or without a colon:
+      <b>System no</b>, <b>System name</b>, <b>System id</b>, <b>Business units</b>,
+      <b>Answer code</b>, <b>Priority</b>, <b>Status</b>, <b>Reported by</b>, <b>Issue</b>, <b>Date</b>.
+      Failing a label, it falls back to matching your system names, spotting an id that fits that
+      system's pattern, and finding a four digit code it recognises. Anything it cannot find is
+      flagged rather than guessed.
+    </p>
+  </div>
+</section>
+
+<!-- ============ REFERENCE DATA ============ -->
+<section class="tab-panel" data-tab="reference" role="tabpanel" hidden>
+  <div class="panel">
+    <header>
+      <h2>Reference data</h2>
+      <span class="hint">the 22 systems and their codes, 10 business units, and the answer code list</span>
+      <span class="spacer"></span>
+      <button class="btn primary" id="ref-save">Save reference data</button>
+    </header>
+    <p class="field-hint">
+      The systems and their configuration item codes are the ones from the configuration item
+      sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
+      them here when you have them. Business unit names and answer codes are still placeholders.
+      A code identifies its system, so two systems cannot share one; a ticket whose code differs
+      from the one on record is flagged, never blocked. Changes are saved in this browser — use
+      the Data tab to export them for a colleague.
+    </p>
+  </div>
+
+  <div class="panel">
+    <header><h3>Systems (1–22)</h3></header>
+    <div class="scroll-x" id="ref-systems"></div>
+  </div>
+
+  <div class="panel">
+    <header><h3>Business units (1–10)</h3></header>
+    <div class="scroll-x" id="ref-units"></div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h3>Answer codes</h3>
+      <span class="spacer"></span>
+      <button class="btn tiny" id="ref-add-answer">Add a code</button>
+    </header>
+    <div class="scroll-x" id="ref-answers"></div>
+  </div>
+</section>
+
+<!-- ============ DATA ============ -->
+<section class="tab-panel" data-tab="data" role="tabpanel" hidden>
+  <div class="panel">
+    <header><h2>Export</h2></header>
+    <p class="field-hint">CSV gives you the tickets currently shown on the dashboard, filters and all. The JSON backup carries every ticket plus your reference data.</p>
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button class="btn primary" id="d-csv">Export filtered tickets (CSV)</button>
+      <button class="btn" id="d-json">Export everything (JSON)</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h2>Import</h2></header>
+    <div class="capture-actions" style="justify-content:flex-start; align-items:center">
+      <label class="field" style="margin:0">
+        <span>On import</span>
+        <select id="d-import-mode">
+          <option value="merge">Merge — keep what is here, skip duplicate references</option>
+          <option value="replace">Replace — delete existing tickets first</option>
+        </select>
+      </label>
+      <span class="btn file-btn">Choose a JSON backup<input type="file" id="d-import" accept="application/json,.json"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h2>Housekeeping</h2></header>
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button class="btn" id="d-demo">Add 140 sample tickets</button>
+      <button class="btn ghost" id="d-reset-ref">Restore default reference data</button>
+      <button class="btn ghost" id="d-clear">Delete all tickets</button>
+    </div>
+    <p class="field-hint" style="margin-top:10px">
+      Tickets live in this browser's local storage — nothing is sent anywhere. Export a JSON backup
+      before clearing your browser data, and to move the log between machines.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  Data stays on this device. Text recognition runs locally in the browser.
+</footer>
+
+<div id="toasts"></div>
+
+<script src="vendor/tesseract/tesseract.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/charts.js"></script>
+<script src="assets/js/ocr.js"></script>
+<script src="assets/js/dashboard.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,3100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service Desk — ticket logging &amp; intelligence</title>
+<meta name="description" content="Log service desk tickets by hand or by photograph, and see which systems and business units are taking the strain.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎫</text></svg>">
+<style>
+/* ------------------------------------------------------------------
+   Service desk platform — one stylesheet.
+   Colour roles are declared once on :root and re-declared for dark,
+   under both the OS media query and the explicit theme stamp.
+   ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: light;
+
+  --surface-0: #f4f3f0;
+  --surface-1: #fcfcfb;
+  --surface-2: #f0efec;
+  --border:    #dedcd6;
+  --border-strong: #c6c3ba;
+
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #7a7871;
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-serious:  #ec835a;
+  --status-critical: #d03b3b;
+
+  --viz-track: #e7e5e0;
+  --viz-grid:  #e2e0da;
+
+  --accent: var(--series-1);
+  --accent-ink: #ffffff;
+  --shadow: 0 1px 2px rgba(11,11,11,.06), 0 6px 18px rgba(11,11,11,.05);
+  --radius: 10px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --border:    #333330;
+    --border-strong: #4a4a46;
+
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #918f85;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+
+    --viz-track: #2c2c2a;
+    --viz-grid:  #2e2e2b;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-0: #121211;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --border:    #333330;
+  --border-strong: #4a4a46;
+
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #918f85;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+
+  --viz-track: #2c2c2a;
+  --viz-grid:  #2e2e2b;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { margin: 0; font-weight: 620; letter-spacing: -0.01em; }
+h1 { font-size: 19px; }
+h2 { font-size: 15px; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); }
+p { margin: 0 0 10px; }
+a { color: var(--accent); }
+
+/* ---------------- shell ---------------- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 20px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand small { color: var(--text-muted); font-size: 12px; }
+.spacer { flex: 1; }
+
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+.tab-btn {
+  appearance: none; border: 0; background: transparent;
+  color: var(--text-secondary); font: inherit; font-weight: 550;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+}
+.tab-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.tab-btn.is-active { background: var(--accent); color: var(--accent-ink); }
+
+main { padding: 20px; max-width: 1440px; margin: 0 auto; }
+
+.banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 20px; font-size: 13px; color: var(--text-secondary);
+  background: color-mix(in srgb, var(--status-warning) 20%, var(--surface-1));
+  border-bottom: 1px solid var(--border);
+}
+.banner b { color: var(--text-primary); }
+.banner button { margin-left: auto; }
+.tab-panel[hidden] { display: none; }
+
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.panel > header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.panel > header .hint { color: var(--text-muted); font-size: 12.5px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+/* ---------------- controls ---------------- */
+
+.btn {
+  appearance: none; font: inherit; font-weight: 550;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1); color: var(--text-primary);
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--text-secondary); }
+.btn.ghost:hover { background: var(--surface-2); }
+.btn.tiny { padding: 3px 8px; font-size: 12px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.link {
+  appearance: none; border: 0; background: none; padding: 0;
+  color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline;
+}
+
+input, select, textarea {
+  font: inherit; color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 7px 9px; width: 100%;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+.btn:focus-visible, .tab-btn:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+input.is-warn { border-color: var(--status-warning); }
+input.short { max-width: 110px; }
+textarea { min-height: 72px; resize: vertical; }
+label.field { display: block; margin-bottom: 12px; }
+label.field > span { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.field-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.field-warn { font-size: 12px; color: var(--status-critical); margin-top: 4px; }
+
+.check { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
+.check:hover { background: var(--surface-2); }
+.check input { width: auto; }
+.check b { font-variant-numeric: tabular-nums; color: var(--text-muted); margin-right: 2px; }
+.unit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.filters label { display: block; }
+.filters label > span { display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 3px; }
+.filters select, .filters input { min-width: 140px; }
+#f-text { min-width: 200px; }
+.filter-dates { display: flex; gap: 8px; }
+.filter-dates input { min-width: 130px; }
+#filter-count { font-size: 12px; color: var(--text-muted); padding-bottom: 8px; }
+#filter-count.is-on { color: var(--accent); font-weight: 600; }
+
+/* ---------------- tiles ---------------- */
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile {
+  background: var(--surface-1); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.tile-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+.tile-value { font-size: 30px; font-weight: 640; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tile-note { font-size: 12px; color: var(--text-muted); min-height: 17px; }
+.tile.tone-critical .tile-value { color: var(--status-critical); }
+
+.insight {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px;
+  font-size: 13.5px; color: var(--text-secondary);
+}
+.insight strong { color: var(--text-primary); }
+
+/* ---------------- charts ---------------- */
+
+.viz-label { font-size: 11.5px; fill: var(--text-secondary); }
+.viz-value { font-size: 11.5px; fill: var(--text-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-axis  { font-size: 10.5px; fill: var(--text-muted); }
+.viz-track { fill: var(--viz-track); }
+.viz-grid  { stroke: var(--viz-grid); stroke-width: 1; }
+.viz-line  { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.viz-area  { fill: var(--series-1); opacity: .12; }
+.viz-cross { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.viz-dot   { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; }
+.viz-cell-value { font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.viz-row.is-clickable, .viz-cell.is-clickable { cursor: pointer; }
+.viz-row:hover .viz-label { fill: var(--text-primary); }
+.viz-cell.is-clickable:hover { stroke: var(--text-primary); stroke-width: 1.5; }
+.viz-empty { color: var(--text-muted); font-size: 13px; padding: 18px 2px; margin: 0; }
+.scroll-x { overflow-x: auto; }
+
+.viz-tip {
+  position: fixed; z-index: 60; pointer-events: none;
+  background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 7px 10px; font-size: 12.5px; line-height: 1.45;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18); max-width: 280px;
+}
+
+/* ---------------- table ---------------- */
+
+.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+.grid th, .grid td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.grid thead th {
+  position: sticky; top: 0; background: var(--surface-1); z-index: 1;
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text-muted); border-bottom: 1px solid var(--border-strong); white-space: nowrap;
+}
+.grid th.sortable { cursor: pointer; user-select: none; }
+.grid th.sortable:hover { color: var(--text-primary); }
+.grid th.is-sorted { color: var(--accent); }
+.grid tbody tr { cursor: pointer; }
+.grid tbody tr:hover { background: var(--surface-2); }
+.grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.grid td.mono, .mono { font-family: var(--mono); font-size: 12px; }
+.grid td.nowrap { white-space: nowrap; }
+.grid td.summary { max-width: 300px; color: var(--text-secondary); }
+.table-wrap { max-height: 560px; overflow: auto; }
+.grid.editable td { padding: 3px 5px; }
+.grid.editable input { padding: 5px 7px; font-size: 12.5px; }
+
+.chip {
+  display: inline-block; min-width: 20px; text-align: center;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 5px; padding: 0 5px; margin-right: 3px;
+  font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-secondary);
+}
+.pill {
+  display: inline-block; border-radius: 999px; padding: 1px 8px;
+  font-size: 11.5px; font-weight: 600;
+  background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border);
+}
+.pill.tone-good     { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); border-color: transparent; }
+.pill.tone-warning  { background: color-mix(in srgb, var(--status-warning) 22%, transparent); color: var(--text-primary); border-color: transparent; }
+.pill.tone-critical { background: color-mix(in srgb, var(--status-critical) 16%, transparent); color: var(--status-critical); border-color: transparent; }
+.pill.tone-photo    { background: color-mix(in srgb, var(--series-1) 16%, transparent); color: var(--series-1); border-color: transparent; }
+
+.pri { font-weight: 650; font-variant-numeric: tabular-nums; }
+.pri-P1 { color: var(--status-critical); }
+.pri-P2 { color: var(--status-serious); }
+.pri-P3 { color: var(--text-secondary); }
+.pri-P4 { color: var(--text-muted); }
+
+/* ---------------- capture ---------------- */
+
+.drop-zone {
+  border: 2px dashed var(--border-strong); border-radius: var(--radius);
+  padding: 26px 20px; text-align: center; background: var(--surface-2);
+  transition: border-color .12s, background .12s;
+}
+.drop-zone.is-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+.drop-zone p { color: var(--text-secondary); font-size: 13.5px; }
+.capture-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.file-btn { position: relative; overflow: hidden; display: inline-block; }
+.file-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+#cap-status { font-size: 13px; color: var(--text-secondary); margin-top: 12px; min-height: 20px; }
+#cap-status.is-busy { color: var(--accent); }
+.bar { display: inline-block; vertical-align: middle; width: 140px; height: 6px; background: var(--viz-track); border-radius: 4px; overflow: hidden; margin-left: 6px; }
+.bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+
+.cap-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface-1); margin-bottom: 12px; overflow: hidden;
+}
+.cap-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.cap-file { font-size: 12.5px; color: var(--text-secondary); }
+.cap-conf { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+.cap-body { display: flex; gap: 14px; padding: 12px; flex-wrap: wrap; }
+.cap-thumb { width: 180px; border-radius: 8px; border: 1px solid var(--border); align-self: flex-start; }
+.cap-fields { flex: 1; min-width: 260px; }
+.cap-row { display: grid; grid-template-columns: 118px 1fr auto; gap: 8px; padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.cap-row:last-child { border-bottom: 0; }
+.cap-key { color: var(--text-secondary); font-weight: 600; font-size: 12.5px; }
+.cap-val { color: var(--text-primary); }
+.cap-how { color: var(--text-muted); font-size: 11.5px; text-align: right; }
+.cap-row.is-missing .cap-val { color: var(--status-critical); font-style: italic; }
+.cap-notes { margin: 0; padding: 8px 12px 8px 30px; font-size: 12.5px; color: var(--text-secondary); background: color-mix(in srgb, var(--status-warning) 12%, transparent); }
+.cap-foot { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); align-items: center; flex-wrap: wrap; }
+.cap-foot .link { margin-left: auto; }
+.cap-raw { margin: 0; padding: 12px; background: var(--surface-2); border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11.5px; white-space: pre-wrap; max-height: 240px; overflow: auto; color: var(--text-secondary); }
+
+.thumb-preview img { max-width: 200px; border-radius: 8px; border: 1px solid var(--border); }
+
+/* ---------------- misc ---------------- */
+
+.errors { border: 1px solid var(--status-critical); background: color-mix(in srgb, var(--status-critical) 10%, transparent); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.errors ul { margin: 0; padding-left: 18px; }
+.errors li { color: var(--text-primary); font-size: 13px; }
+
+#toasts { position: fixed; bottom: 18px; right: 18px; z-index: 70; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--text-primary); color: var(--surface-1);
+  padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 550;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 1; transition: opacity .5s, transform .5s;
+}
+.toast.tone-warning { background: var(--status-critical); color: #fff; }
+.toast.is-out { opacity: 0; transform: translateY(6px); }
+
+footer.site { color: var(--text-muted); font-size: 12px; padding: 8px 20px 32px; max-width: 1440px; margin: 0 auto; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 640px) {
+  main { padding: 12px; }
+  .topbar { flex-wrap: wrap; gap: 8px; }
+  .tile-value { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>Service Desk</h1>
+    <small>ticket logging &amp; intelligence</small>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab-btn" data-tab="dashboard" role="tab" aria-selected="false">Dashboard</button>
+    <button class="tab-btn" data-tab="log"       role="tab" aria-selected="false">Log a ticket</button>
+    <button class="tab-btn" data-tab="capture"   role="tab" aria-selected="false">Photo capture</button>
+    <button class="tab-btn" data-tab="reference" role="tab" aria-selected="false">Reference data</button>
+    <button class="tab-btn" data-tab="data"      role="tab" aria-selected="false">Data</button>
+  </nav>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="theme-btn" title="Light, dark or follow the system">Auto</button>
+</header>
+
+<main>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="tab-panel" data-tab="dashboard" role="tabpanel" hidden>
+
+  <div class="panel">
+    <header>
+      <h2>Filters</h2>
+      <span class="hint">Every chart below is clickable — a bar or a cell sets the filter for you.</span>
+    </header>
+    <div class="filters">
+      <label><span>System</span><select id="f-system"></select></label>
+      <label><span>Business unit</span><select id="f-unit"></select></label>
+      <label><span>Answer code</span><select id="f-answer"></select></label>
+      <label><span>Status</span><select id="f-status"></select></label>
+      <label><span>Priority</span><select id="f-priority"></select></label>
+      <span class="filter-dates">
+        <label><span>Logged from</span><input type="date" id="f-from"></label>
+        <label><span>to</span><input type="date" id="f-to"></label>
+      </span>
+      <label><span>Search</span><input type="search" id="f-text" placeholder="reference, id, words…"></label>
+      <button class="btn ghost" id="f-clear">Clear</button>
+      <span id="filter-count">No filters</span>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+  <p class="insight" id="insight"></p>
+
+  <div class="grid-3">
+    <div class="panel">
+      <header><h2>Tickets by system</h2><span class="hint">which of the 22 systems is costing you most</span></header>
+      <div id="chart-systems"></div>
+    </div>
+    <div>
+      <div class="panel">
+        <header><h2>Tickets logged per day</h2></header>
+        <div id="chart-trend"></div>
+      </div>
+      <div class="panel">
+        <header><h2>Priority mix</h2></header>
+        <div id="chart-priority"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <header><h2>Business units impacted</h2><span class="hint">a ticket can hit more than one</span></header>
+      <div id="chart-units"></div>
+    </div>
+    <div class="panel">
+      <header><h2>Answer codes</h2><span class="hint">top ten by volume</span></header>
+      <div id="chart-answers"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>System against business unit</h2>
+      <span class="hint">darker means more tickets — this is where a system's pain actually lands</span>
+    </header>
+    <div class="scroll-x" id="chart-heatmap"></div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>Ticket log</h2>
+      <span class="hint" id="table-count"></span>
+      <span class="spacer"></span>
+      <span class="hint">click a row to edit it</span>
+    </header>
+    <div class="table-wrap" id="table-host"></div>
+  </div>
+</section>
+
+<!-- ============ LOG A TICKET ============ -->
+<section class="tab-panel" data-tab="log" role="tabpanel" hidden>
+  <form class="panel" id="ticket-form" novalidate>
+    <header>
+      <h2>Ticket details</h2>
+      <span class="hint" id="form-mode"></span>
+    </header>
+
+    <div class="errors" id="t-errors" hidden></div>
+
+    <div class="grid-2">
+      <div>
+        <label class="field">
+          <span>System (1–22) *</span>
+          <select id="t-system" required></select>
+          <span class="field-hint" id="t-system-hint">The system number and name travel together.</span>
+        </label>
+
+        <label class="field">
+          <span>Configuration item code</span>
+          <input id="t-system-id" autocomplete="off">
+          <span class="field-hint" id="t-system-id-hint">Choose a system and its code appears here.</span>
+          <span class="field-warn" id="t-system-id-warn" hidden></span>
+        </label>
+
+        <label class="field">
+          <span>Answer code (4 digits) *</span>
+          <select id="t-answer" required></select>
+        </label>
+
+        <div class="grid-2">
+          <label class="field"><span>Priority</span><select id="t-priority"></select></label>
+          <label class="field"><span>Status</span><select id="t-status"></select></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Channel</span><select id="t-channel"></select></label>
+          <label class="field"><span>Logged at</span><input type="datetime-local" id="t-when"></label>
+        </div>
+      </div>
+
+      <div>
+        <div class="field">
+          <span style="display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">
+            Business units impacted (1–10) *
+          </span>
+          <div class="unit-grid" id="t-units"></div>
+        </div>
+
+        <label class="field">
+          <span>What happened</span>
+          <textarea id="t-summary" placeholder="One line the next person can act on."></textarea>
+        </label>
+
+        <div class="grid-2">
+          <label class="field"><span>Reported by</span><input id="t-reported" autocomplete="off"></label>
+          <label class="field"><span>Logged by</span><input id="t-agent" autocomplete="off"></label>
+        </div>
+
+        <div class="thumb-preview" id="t-thumb-wrap" hidden>
+          <img id="t-thumb" alt="Photograph this ticket came from">
+        </div>
+      </div>
+    </div>
+
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button type="submit" class="btn primary" id="t-submit">Log ticket</button>
+      <button type="button" class="btn" id="t-reset">Clear</button>
+      <button type="button" class="btn ghost" id="t-delete" hidden>Delete ticket</button>
+    </div>
+  </form>
+</section>
+
+<!-- ============ PHOTO CAPTURE ============ -->
+<section class="tab-panel" data-tab="capture" role="tabpanel" hidden>
+  <div class="panel">
+    <header>
+      <h2>Photograph a ticket</h2>
+      <span class="hint">the fields are read off the picture and go straight onto the dashboard</span>
+    </header>
+
+    <div class="drop-zone" id="cap-zone">
+      <div class="capture-actions">
+        <span class="btn primary file-btn">
+          Take a photo
+          <input type="file" id="cap-input" accept="image/*" capture="environment" multiple>
+        </span>
+        <span class="btn file-btn">
+          Choose images
+          <input type="file" id="cap-file" accept="image/*" multiple>
+        </span>
+      </div>
+      <p>Or drag photos here, or paste one from the clipboard. Several at once is fine — each photo becomes one ticket.</p>
+    </div>
+
+    <div id="cap-status"></div>
+
+    <p class="field-hint" style="margin-top:12px">
+      Reading happens entirely in your browser — no photo ever leaves this device, and no part of this needs the internet.
+      For the best results photograph the ticket square on, in good light, with the whole form in frame.
+    </p>
+
+    <label class="check" style="margin-top:8px">
+      <input type="checkbox" id="cap-auto">
+      <span>Add to the dashboard automatically when every key field is read cleanly</span>
+    </label>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h2>Waiting to be confirmed</h2>
+      <span class="hint" id="cap-queue-count"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost tiny" id="cap-clear">Discard all</button>
+    </header>
+    <div id="cap-queue"></div>
+  </div>
+
+  <div class="panel">
+    <header><h2>What the reader looks for</h2></header>
+    <p class="field-hint">
+      Any of these labels on the paper ticket will be picked up, with or without a colon:
+      <b>System no</b>, <b>System name</b>, <b>System id</b>, <b>Business units</b>,
+      <b>Answer code</b>, <b>Priority</b>, <b>Status</b>, <b>Reported by</b>, <b>Issue</b>, <b>Date</b>.
+      Failing a label, it falls back to matching your system names, spotting an id that fits that
+      system's pattern, and finding a four digit code it recognises. Anything it cannot find is
+      flagged rather than guessed.
+    </p>
+  </div>
+</section>
+
+<!-- ============ REFERENCE DATA ============ -->
+<section class="tab-panel" data-tab="reference" role="tabpanel" hidden>
+  <div class="panel">
+    <header>
+      <h2>Reference data</h2>
+      <span class="hint">the 22 systems and their codes, 10 business units, and the answer code list</span>
+      <span class="spacer"></span>
+      <button class="btn primary" id="ref-save">Save reference data</button>
+    </header>
+    <p class="field-hint">
+      The systems and their configuration item codes are the ones from the configuration item
+      sheet; systems 15&ndash;22 have no code recorded yet, and the app will not invent one — add
+      them here when you have them. Business unit names and answer codes are still placeholders.
+      A code identifies its system, so two systems cannot share one; a ticket whose code differs
+      from the one on record is flagged, never blocked. Changes are saved in this browser — use
+      the Data tab to export them for a colleague.
+    </p>
+  </div>
+
+  <div class="panel">
+    <header><h3>Systems (1–22)</h3></header>
+    <div class="scroll-x" id="ref-systems"></div>
+  </div>
+
+  <div class="panel">
+    <header><h3>Business units (1–10)</h3></header>
+    <div class="scroll-x" id="ref-units"></div>
+  </div>
+
+  <div class="panel">
+    <header>
+      <h3>Answer codes</h3>
+      <span class="spacer"></span>
+      <button class="btn tiny" id="ref-add-answer">Add a code</button>
+    </header>
+    <div class="scroll-x" id="ref-answers"></div>
+  </div>
+</section>
+
+<!-- ============ DATA ============ -->
+<section class="tab-panel" data-tab="data" role="tabpanel" hidden>
+  <div class="panel">
+    <header><h2>Export</h2></header>
+    <p class="field-hint">CSV gives you the tickets currently shown on the dashboard, filters and all. The JSON backup carries every ticket plus your reference data.</p>
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button class="btn primary" id="d-csv">Export filtered tickets (CSV)</button>
+      <button class="btn" id="d-json">Export everything (JSON)</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h2>Import</h2></header>
+    <div class="capture-actions" style="justify-content:flex-start; align-items:center">
+      <label class="field" style="margin:0">
+        <span>On import</span>
+        <select id="d-import-mode">
+          <option value="merge">Merge — keep what is here, skip duplicate references</option>
+          <option value="replace">Replace — delete existing tickets first</option>
+        </select>
+      </label>
+      <span class="btn file-btn">Choose a JSON backup<input type="file" id="d-import" accept="application/json,.json"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <header><h2>Housekeeping</h2></header>
+    <div class="capture-actions" style="justify-content:flex-start">
+      <button class="btn" id="d-demo">Add 140 sample tickets</button>
+      <button class="btn ghost" id="d-reset-ref">Restore default reference data</button>
+      <button class="btn ghost" id="d-clear">Delete all tickets</button>
+    </div>
+    <p class="field-hint" style="margin-top:10px">
+      Tickets live in this browser's local storage — nothing is sent anywhere. Export a JSON backup
+      before clearing your browser data, and to move the log between machines.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer class="site">
+  Data stays on this device. Text recognition runs locally in the browser.
+</footer>
+
+<div id="toasts"></div>
+
+<script>window.SDP_SINGLE_FILE = true;</script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+/* ------------------------------------------------------------------
+   Reference data for the service desk platform.
+
+   Everything in here is editable from the "Reference data" tab in the
+   app (changes are saved to the browser). Editing this file changes
+   the defaults that ship with the repo — i.e. what a brand new browser
+   sees, and what "Reset reference data" restores.
+   ------------------------------------------------------------------ */
+
+window.SDP_DEFAULT_CONFIG = {
+  version: 1,
+  organisation: 'Service Desk',
+
+  /* The 22 systems, as they appear on the configuration item sheet.
+     `code` is that system's configuration item code — it belongs to the
+     system, not to the ticket, so the ticket form fills it in for you.
+     Systems 15-22 have no code recorded yet; add them here or on the
+     Reference data tab and the app picks them up. */
+  systems: [
+    { no:  1, name: 'Castor',    code: 'CA-1'  },
+    { no:  2, name: 'Bellatrix', code: 'BX-1'  },
+    { no:  3, name: 'Zosma',     code: 'ZO-1'  },
+    { no:  4, name: 'Nash',      code: 'NN-2'  },
+    { no:  5, name: 'Sham',      code: 'SH-1'  },
+    { no:  6, name: 'Rastaban',  code: 'RD-1'  },
+    { no:  7, name: 'Polaris',   code: 'PO-1'  },
+    { no:  8, name: 'Alshat',    code: 'AT-1'  },
+    { no:  9, name: 'Nunki',     code: 'NN-1'  },
+    { no: 10, name: 'Phad',      code: 'PD-1'  },
+    { no: 11, name: 'Megrez',    code: 'MZ-1'  },
+    { no: 12, name: 'Izar',      code: 'IZ-1'  },
+    { no: 13, name: 'Electra',   code: 'EA-1'  },
+    { no: 14, name: 'Tarazed',   code: 'TZ-1'  },
+    { no: 15, name: 'Acubens',   code: ''      },
+    { no: 16, name: 'Acamar',    code: ''      },
+    { no: 17, name: 'Cheleb',    code: ''      },
+    { no: 18, name: 'Capella',   code: ''      },
+    { no: 19, name: 'Mars',      code: ''      },
+    { no: 20, name: 'Neptune',   code: ''      },
+    { no: 21, name: 'Pluto',     code: ''      },
+    { no: 22, name: 'P2132-5',   code: ''      }
+  ],
+
+  /* The 10 business units. A ticket can impact more than one. */
+  businessUnits: [
+    { no: 1,  name: 'Customer Operations',     short: 'Cust Ops' },
+    { no: 2,  name: 'Field Operations',        short: 'Field Ops' },
+    { no: 3,  name: 'Water Production',        short: 'Production' },
+    { no: 4,  name: 'Wastewater',              short: 'Wastewater' },
+    { no: 5,  name: 'Asset Management',        short: 'Assets' },
+    { no: 6,  name: 'Finance',                 short: 'Finance' },
+    { no: 7,  name: 'People & HR',             short: 'HR' },
+    { no: 8,  name: 'IT & Digital',            short: 'IT' },
+    { no: 9,  name: 'Regulation & Compliance', short: 'Regulation' },
+    { no: 10, name: 'Commercial & Retail',     short: 'Commercial' }
+  ],
+
+  /* Four digit answer / resolution codes. */
+  answerCodes: [
+    { code: '1001', label: 'Password reset',                 category: 'Access' },
+    { code: '1002', label: 'Account unlocked',               category: 'Access' },
+    { code: '1010', label: 'Access rights granted',          category: 'Access' },
+    { code: '1020', label: 'Access rights removed',          category: 'Access' },
+    { code: '2001', label: 'Data correction applied',        category: 'Data' },
+    { code: '2010', label: 'Interface message reprocessed',  category: 'Data' },
+    { code: '2020', label: 'Batch job re-run',               category: 'Data' },
+    { code: '2030', label: 'Report re-published',            category: 'Data' },
+    { code: '3001', label: 'Hardware replaced',              category: 'Infrastructure' },
+    { code: '3010', label: 'Network fault resolved',         category: 'Infrastructure' },
+    { code: '3020', label: 'Service restarted',              category: 'Infrastructure' },
+    { code: '3030', label: 'Capacity increased',             category: 'Infrastructure' },
+    { code: '4001', label: 'Defect raised to supplier',      category: 'Application' },
+    { code: '4010', label: 'Known error - workaround given', category: 'Application' },
+    { code: '4020', label: 'Configuration corrected',        category: 'Application' },
+    { code: '4030', label: 'Patch / release applied',        category: 'Application' },
+    { code: '5001', label: 'User guidance / training',       category: 'User' },
+    { code: '5010', label: 'No fault found',                 category: 'User' },
+    { code: '5020', label: 'Working as designed',            category: 'User' },
+    { code: '6001', label: 'Change request raised',          category: 'Change' },
+    { code: '6010', label: 'Referred to project team',       category: 'Change' },
+    { code: '9999', label: 'Duplicate / cancelled',          category: 'Admin' }
+  ],
+
+  priorities: ['P1', 'P2', 'P3', 'P4'],
+  statuses:   ['Open', 'In progress', 'Pending customer', 'Resolved', 'Closed'],
+  channels:   ['Phone', 'Email', 'Portal', 'Walk-up', 'Monitoring alert', 'Photo capture']
+};
+</script>
+<script>
+/* ------------------------------------------------------------------
+   Store — persistence, ticket CRUD and every aggregation the
+   dashboard reads. Data lives in the browser (localStorage) so the
+   platform runs as a plain static site with no backend.
+   ------------------------------------------------------------------ */
+
+window.Store = (function () {
+  var K_TICKETS = 'sdp.tickets.v1';
+  var K_CONFIG  = 'sdp.config.v1';
+  var K_PREFS   = 'sdp.prefs.v1';
+
+  var tickets = [];
+  var config  = null;
+  var prefs   = { theme: 'system', autoAdd: true, lastAgent: '' };
+  var listeners = [];
+
+  /* ---------------- persistence ---------------- */
+
+  function readJSON(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.warn('Could not read ' + key, e);
+      return fallback;
+    }
+  }
+
+  function writeJSON(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.error('Could not save ' + key, e);
+      notify('storage-error', e);
+      return false;
+    }
+  }
+
+  function load() {
+    config  = readJSON(K_CONFIG, null) || deepCopy(window.SDP_DEFAULT_CONFIG);
+    tickets = readJSON(K_TICKETS, []);
+    prefs   = Object.assign(prefs, readJSON(K_PREFS, {}));
+    return { config: config, tickets: tickets, prefs: prefs };
+  }
+
+  function saveTickets() { writeJSON(K_TICKETS, tickets); notify('tickets'); }
+  function saveConfig()  { writeJSON(K_CONFIG, config);   notify('config'); }
+  function savePrefs()   { writeJSON(K_PREFS, prefs); }
+
+  function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function on(fn) { listeners.push(fn); }
+  function notify(what, detail) { listeners.forEach(function (fn) { fn(what, detail); }); }
+
+  /* ---------------- lookups ---------------- */
+
+  function getConfig() { return config; }
+  function getPrefs()  { return prefs; }
+
+  function setPref(key, value) { prefs[key] = value; savePrefs(); }
+
+  function systemByNo(no) {
+    no = Number(no);
+    for (var i = 0; i < config.systems.length; i++) {
+      if (Number(config.systems[i].no) === no) return config.systems[i];
+    }
+    return null;
+  }
+
+  function unitByNo(no) {
+    no = Number(no);
+    for (var i = 0; i < config.businessUnits.length; i++) {
+      if (Number(config.businessUnits[i].no) === no) return config.businessUnits[i];
+    }
+    return null;
+  }
+
+  function answerByCode(code) {
+    code = String(code || '').trim();
+    for (var i = 0; i < config.answerCodes.length; i++) {
+      if (config.answerCodes[i].code === code) return config.answerCodes[i];
+    }
+    return null;
+  }
+
+  function systemLabel(no) {
+    var s = systemByNo(no);
+    return s ? s.no + '. ' + s.name : 'System ' + no;
+  }
+
+  function unitLabel(no) {
+    var u = unitByNo(no);
+    return u ? u.name : 'Business unit ' + no;
+  }
+
+  function unitShort(no) {
+    var u = unitByNo(no);
+    return u ? (u.short || u.name) : 'BU ' + no;
+  }
+
+  function answerLabel(code) {
+    var a = answerByCode(code);
+    return a ? a.code + ' — ' + a.label : String(code || '');
+  }
+
+  /* Codes are compared with punctuation and case ignored, so "ca 1",
+     "CA-1" and "ca1" all count as the same configuration item. */
+  function normCode(v) {
+    return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
+  function systemByCode(code) {
+    var k = normCode(code);
+    if (!k) return null;
+    for (var i = 0; i < config.systems.length; i++) {
+      if (config.systems[i].code && normCode(config.systems[i].code) === k) return config.systems[i];
+    }
+    return null;
+  }
+
+  /* Does this id match the code recorded against that system? */
+  function validateSystemId(systemNo, systemId) {
+    var s = systemByNo(systemNo);
+    if (!s || !s.code || !systemId) return { ok: true, expected: s ? s.code : '' };
+    return { ok: normCode(systemId) === normCode(s.code), expected: s.code };
+  }
+
+  /* ---------------- ticket CRUD ---------------- */
+
+  function nextRef() {
+    var max = 0;
+    tickets.forEach(function (t) {
+      var m = /^SD-(\d+)$/.exec(t.ref || '');
+      if (m) max = Math.max(max, Number(m[1]));
+    });
+    return 'SD-' + String(max + 1).padStart(5, '0');
+  }
+
+  function normalise(t) {
+    var units = (t.businessUnits || []).map(Number)
+      .filter(function (n) { return !isNaN(n); });
+    units = units.filter(function (n, i) { return units.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+
+    var sys = systemByNo(t.systemNo);
+    return {
+      id:            t.id || ('t_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)),
+      ref:           t.ref || nextRef(),
+      loggedAt:      t.loggedAt || new Date().toISOString(),
+      systemNo:      Number(t.systemNo),
+      systemName:    sys ? sys.name : (t.systemName || ''),
+      systemId:      String(t.systemId || (sys && sys.code) || '').trim(),
+      businessUnits: units,
+      answerCode:    String(t.answerCode || '').trim(),
+      priority:      t.priority || 'P3',
+      status:        t.status || 'Open',
+      channel:       t.channel || 'Phone',
+      summary:       String(t.summary || '').trim(),
+      reportedBy:    String(t.reportedBy || '').trim(),
+      loggedBy:      String(t.loggedBy || prefs.lastAgent || '').trim(),
+      source:        t.source || 'manual',
+      ocr:           t.ocr || null,
+      thumb:         t.thumb || null
+    };
+  }
+
+  function addTicket(raw) {
+    var t = normalise(raw);
+    tickets.push(t);
+    saveTickets();
+    return t;
+  }
+
+  function addMany(list) {
+    /* push as we go — normalise() reads the array to pick the next reference */
+    var added = list.map(function (raw) {
+      var t = normalise(raw);
+      tickets.push(t);
+      return t;
+    });
+    saveTickets();
+    return added;
+  }
+
+  function updateTicket(id, patch) {
+    for (var i = 0; i < tickets.length; i++) {
+      if (tickets[i].id === id) {
+        tickets[i] = normalise(Object.assign({}, tickets[i], patch));
+        saveTickets();
+        return tickets[i];
+      }
+    }
+    return null;
+  }
+
+  function deleteTicket(id) {
+    var before = tickets.length;
+    tickets = tickets.filter(function (t) { return t.id !== id; });
+    if (tickets.length !== before) saveTickets();
+  }
+
+  function clearTickets() { tickets = []; saveTickets(); }
+
+  function all() { return tickets.slice(); }
+
+  function byId(id) {
+    return tickets.filter(function (t) { return t.id === id; })[0] || null;
+  }
+
+  /* ---------------- filtering ---------------- */
+
+  var EMPTY_FILTER = {
+    system: '', unit: '', answer: '', status: '', priority: '',
+    from: '', to: '', text: ''
+  };
+
+  function applyFilter(list, f) {
+    f = Object.assign({}, EMPTY_FILTER, f || {});
+    var text = f.text.trim().toLowerCase();
+    return list.filter(function (t) {
+      if (f.system && Number(t.systemNo) !== Number(f.system)) return false;
+      if (f.unit && t.businessUnits.indexOf(Number(f.unit)) === -1) return false;
+      if (f.answer && t.answerCode !== f.answer) return false;
+      if (f.status && t.status !== f.status) return false;
+      if (f.priority && t.priority !== f.priority) return false;
+      if (f.from && t.loggedAt.slice(0, 10) < f.from) return false;
+      if (f.to && t.loggedAt.slice(0, 10) > f.to) return false;
+      if (text) {
+        var hay = [t.ref, t.systemName, t.systemId, t.summary, t.reportedBy,
+                   t.loggedBy, t.answerCode, answerLabel(t.answerCode)]
+          .join(' ').toLowerCase();
+        if (hay.indexOf(text) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  /* ---------------- aggregation ---------------- */
+
+  function countBySystem(list) {
+    return config.systems.map(function (s) {
+      return {
+        key: s.no,
+        label: s.no + '. ' + s.name,
+        short: s.name,
+        value: list.filter(function (t) { return Number(t.systemNo) === Number(s.no); }).length
+      };
+    });
+  }
+
+  function countByUnit(list) {
+    return config.businessUnits.map(function (u) {
+      return {
+        key: u.no,
+        label: u.no + '. ' + u.name,
+        short: u.short || u.name,
+        value: list.filter(function (t) { return t.businessUnits.indexOf(Number(u.no)) !== -1; }).length
+      };
+    });
+  }
+
+  function countByAnswer(list) {
+    var seen = {};
+    list.forEach(function (t) {
+      var c = t.answerCode || '(none)';
+      seen[c] = (seen[c] || 0) + 1;
+    });
+    return Object.keys(seen).map(function (code) {
+      var a = answerByCode(code);
+      return {
+        key: code,
+        label: code + (a ? ' — ' + a.label : ''),
+        short: code,
+        category: a ? a.category : 'Uncoded',
+        value: seen[code]
+      };
+    }).sort(function (a, b) { return b.value - a.value; });
+  }
+
+  function countByField(list, field) {
+    var seen = {};
+    list.forEach(function (t) { var k = t[field] || '(none)'; seen[k] = (seen[k] || 0) + 1; });
+    return Object.keys(seen).map(function (k) {
+      return { key: k, label: k, short: k, value: seen[k] };
+    }).sort(function (a, b) { return b.value - a.value; });
+  }
+
+  /* Daily counts across the range covered by the list (gap filled). */
+  function countByDay(list, minDays) {
+    minDays = minDays || 14;
+    var days = {};
+    list.forEach(function (t) {
+      var d = t.loggedAt.slice(0, 10);
+      days[d] = (days[d] || 0) + 1;
+    });
+    var keys = Object.keys(days).sort();
+    var end = new Date();
+    var start = keys.length ? new Date(keys[0] + 'T00:00:00') : new Date();
+    var span = Math.round((end - start) / 86400000) + 1;
+    if (span < minDays) start = new Date(end.getTime() - (minDays - 1) * 86400000);
+    var out = [];
+    for (var d = new Date(start); d <= end; d = new Date(d.getTime() + 86400000)) {
+      var key = d.toISOString().slice(0, 10);
+      out.push({ key: key, label: key, value: days[key] || 0 });
+    }
+    return out;
+  }
+
+  /* System (rows) x business unit (cols) impact matrix. */
+  function impactMatrix(list) {
+    var rows = config.systems.map(function (s) { return { key: s.no, label: s.no + '. ' + s.name, short: s.name }; });
+    var cols = config.businessUnits.map(function (u) { return { key: u.no, label: u.name, short: u.short || u.name }; });
+    var cells = rows.map(function (r) {
+      return cols.map(function (c) {
+        return list.filter(function (t) {
+          return Number(t.systemNo) === Number(r.key) && t.businessUnits.indexOf(Number(c.key)) !== -1;
+        }).length;
+      });
+    });
+    return { rows: rows, cols: cols, cells: cells };
+  }
+
+  function summary(list) {
+    var open = list.filter(function (t) { return t.status !== 'Resolved' && t.status !== 'Closed'; }).length;
+    var p1 = list.filter(function (t) { return t.priority === 'P1'; }).length;
+    var systems = {}, units = {}, uncoded = 0;
+    list.forEach(function (t) {
+      systems[t.systemNo] = true;
+      t.businessUnits.forEach(function (u) { units[u] = true; });
+      if (!answerByCode(t.answerCode)) uncoded++;
+    });
+    var bySys = countBySystem(list).slice().sort(function (a, b) { return b.value - a.value; });
+    var byUnit = countByUnit(list).slice().sort(function (a, b) { return b.value - a.value; });
+    var byAns = countByAnswer(list);
+    var today = new Date().toISOString().slice(0, 10);
+    return {
+      total: list.length,
+      open: open,
+      p1: p1,
+      today: list.filter(function (t) { return t.loggedAt.slice(0, 10) === today; }).length,
+      systemsImpacted: Object.keys(systems).length,
+      unitsImpacted: Object.keys(units).length,
+      uncoded: uncoded,
+      fromPhoto: list.filter(function (t) { return t.source === 'photo'; }).length,
+      topSystem: bySys[0] && bySys[0].value ? bySys[0] : null,
+      topUnit: byUnit[0] && byUnit[0].value ? byUnit[0] : null,
+      topAnswer: byAns[0] || null
+    };
+  }
+
+  /* ---------------- import / export ---------------- */
+
+  function toCSV(list) {
+    var head = ['Ref', 'Logged at', 'System no', 'System name', 'System id',
+                'Business units', 'Business unit names', 'Answer code', 'Answer',
+                'Priority', 'Status', 'Channel', 'Summary', 'Reported by', 'Logged by', 'Source'];
+    var rows = list.map(function (t) {
+      return [
+        t.ref, t.loggedAt, t.systemNo, t.systemName, t.systemId,
+        t.businessUnits.join(' '),
+        t.businessUnits.map(unitLabel).join('; '),
+        t.answerCode,
+        (answerByCode(t.answerCode) || {}).label || '',
+        t.priority, t.status, t.channel, t.summary, t.reportedBy, t.loggedBy, t.source
+      ];
+    });
+    return [head].concat(rows).map(function (r) {
+      return r.map(function (cell) {
+        var s = String(cell == null ? '' : cell);
+        return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',');
+    }).join('\n');
+  }
+
+  function exportBundle() {
+    return {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      config: config,
+      tickets: tickets
+    };
+  }
+
+  function importBundle(bundle, mode) {
+    if (!bundle || typeof bundle !== 'object') throw new Error('Not a valid export file.');
+    var incoming = Array.isArray(bundle) ? bundle : (bundle.tickets || []);
+    if (bundle.config && bundle.config.systems) { config = bundle.config; saveConfig(); }
+    if (mode === 'replace') tickets = [];
+    var existing = {};
+    tickets.forEach(function (t) { existing[t.ref] = true; });
+    var added = 0;
+    incoming.forEach(function (raw) {
+      if (raw.ref && existing[raw.ref]) return;
+      tickets.push(normalise(raw));
+      added++;
+    });
+    saveTickets();
+    return added;
+  }
+
+  function resetConfig() {
+    config = deepCopy(window.SDP_DEFAULT_CONFIG);
+    saveConfig();
+  }
+
+  return {
+    load: load, on: on,
+    getConfig: getConfig, saveConfig: saveConfig, resetConfig: resetConfig,
+    getPrefs: getPrefs, setPref: setPref,
+    systemByNo: systemByNo, unitByNo: unitByNo, answerByCode: answerByCode,
+    systemLabel: systemLabel, unitLabel: unitLabel, unitShort: unitShort,
+    answerLabel: answerLabel, validateSystemId: validateSystemId,
+    nextRef: nextRef, addTicket: addTicket, addMany: addMany,
+    updateTicket: updateTicket, deleteTicket: deleteTicket, clearTickets: clearTickets,
+    all: all, byId: byId,
+    EMPTY_FILTER: EMPTY_FILTER, applyFilter: applyFilter,
+    countBySystem: countBySystem, countByUnit: countByUnit, countByAnswer: countByAnswer,
+    countByField: countByField, countByDay: countByDay, impactMatrix: impactMatrix,
+    summary: summary,
+    toCSV: toCSV, exportBundle: exportBundle, importBundle: importBundle
+  };
+})();
+</script>
+<script>
+/* ------------------------------------------------------------------
+   Charts — small dependency-free SVG renderers.
+
+   Colour roles come from CSS custom properties on .viz-root so light
+   and dark modes swap in one place. Every chart carries a hover layer.
+   ------------------------------------------------------------------ */
+
+window.Charts = (function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var tip = null;
+
+  function el(name, attrs, parent) {
+    var node = document.createElementNS(NS, name);
+    for (var k in attrs) {
+      if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+    }
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  function ensureTip() {
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.className = 'viz-tip';
+      tip.setAttribute('role', 'status');
+      tip.hidden = true;
+      document.body.appendChild(tip);
+    }
+    return tip;
+  }
+
+  function showTip(html, evt) {
+    var t = ensureTip();
+    t.innerHTML = html;
+    t.hidden = false;
+    var pad = 14;
+    var rect = t.getBoundingClientRect();
+    var x = evt.clientX + pad;
+    var y = evt.clientY + pad;
+    if (x + rect.width > window.innerWidth - 8) x = evt.clientX - rect.width - pad;
+    if (y + rect.height > window.innerHeight - 8) y = evt.clientY - rect.height - pad;
+    t.style.left = Math.max(8, x) + 'px';
+    t.style.top = Math.max(8, y) + 'px';
+  }
+
+  function hideTip() { if (tip) tip.hidden = true; }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function empty(host, message) {
+    host.innerHTML = '<p class="viz-empty">' + esc(message || 'No tickets match the current filters.') + '</p>';
+  }
+
+  function niceMax(v) {
+    if (v <= 5) return Math.max(1, v);
+    var mag = Math.pow(10, Math.floor(Math.log10(v)));
+    return Math.ceil(v / (mag / 2)) * (mag / 2);
+  }
+
+  /* ---------------- horizontal bar chart ----------------
+     Magnitude comparison across a named list. Rows keep a fixed
+     order so a colour never migrates between entities. */
+  function barH(host, opts) {
+    host.innerHTML = '';
+    var data = (opts.data || []).slice();
+    if (opts.sort !== false) data.sort(function (a, b) { return b.value - a.value; });
+    if (opts.limit) data = data.slice(0, opts.limit);
+    if (!data.length || data.every(function (d) { return !d.value; })) return empty(host, opts.emptyText);
+
+    var rowH = opts.rowHeight || 26;
+    var gap = 6;
+    var labelW = opts.labelWidth || 168;
+    var valueW = 46;
+    var width = host.clientWidth || 640;
+    var plotW = Math.max(60, width - labelW - valueW - 8);
+    var height = data.length * (rowH + gap) - gap + 4;
+    var max = niceMax(Math.max.apply(null, data.map(function (d) { return d.value; })));
+
+    var svg = el('svg', {
+      viewBox: '0 0 ' + width + ' ' + height,
+      width: '100%', height: height,
+      role: 'img', 'aria-label': opts.ariaLabel || 'Bar chart'
+    }, host);
+
+    data.forEach(function (d, i) {
+      var y = i * (rowH + gap);
+      var w = max ? Math.max(d.value ? 3 : 0, (d.value / max) * plotW) : 0;
+      var g = el('g', { class: 'viz-row' + (opts.onSelect ? ' is-clickable' : '') }, svg);
+
+      el('rect', { x: 0, y: y, width: width, height: rowH, fill: 'transparent' }, g);
+
+      var label = el('text', {
+        x: labelW - 10, y: y + rowH / 2, 'text-anchor': 'end',
+        'dominant-baseline': 'central', class: 'viz-label'
+      }, g);
+      label.textContent = d.short || d.label;
+
+      el('rect', {
+        x: labelW, y: y + 3, width: plotW, height: rowH - 6,
+        rx: 4, class: 'viz-track'
+      }, g);
+
+      if (w > 0) {
+        el('rect', {
+          x: labelW, y: y + 3, width: w, height: rowH - 6,
+          rx: 4, fill: d.color || opts.color || 'var(--series-1)'
+        }, g);
+      }
+
+      var val = el('text', {
+        x: labelW + plotW + 8, y: y + rowH / 2,
+        'dominant-baseline': 'central', class: 'viz-value'
+      }, g);
+      val.textContent = d.value;
+
+      g.addEventListener('mousemove', function (e) {
+        showTip('<strong>' + esc(d.label) + '</strong><br>' +
+          esc(d.value) + ' ' + (d.value === 1 ? 'ticket' : 'tickets') +
+          (opts.total ? ' &middot; ' + Math.round((d.value / opts.total) * 100) + '% of shown' : ''), e);
+      });
+      g.addEventListener('mouseleave', hideTip);
+      if (opts.onSelect) {
+        g.addEventListener('click', function () { hideTip(); opts.onSelect(d); });
+      }
+    });
+    return svg;
+  }
+
+  /* ---------------- trend line ----------------
+     One series over time: 2px line, area wash, crosshair tooltip. */
+  function line(host, opts) {
+    host.innerHTML = '';
+    var data = opts.data || [];
+    if (data.length < 2) return empty(host, opts.emptyText || 'Not enough history to draw a trend yet.');
+
+    var width = host.clientWidth || 640;
+    var height = opts.height || 200;
+    var m = { top: 12, right: 12, bottom: 26, left: 34 };
+    var plotW = width - m.left - m.right;
+    var plotH = height - m.top - m.bottom;
+    /* pick a maximum the tick count divides exactly, so every axis
+       label is a whole number of tickets */
+    var ticks = 4;
+    var peak = Math.max.apply(null, data.map(function (d) { return d.value; })) || 1;
+    var step = Math.ceil(peak / ticks);
+    [1, 2, 5, 10, 20, 25, 50, 100].some(function (n) { if (n >= step) { step = n; return true; } });
+    var max = step * ticks;
+
+    var svg = el('svg', {
+      viewBox: '0 0 ' + width + ' ' + height, width: '100%', height: height,
+      role: 'img', 'aria-label': opts.ariaLabel || 'Tickets over time'
+    }, host);
+
+    var x = function (i) { return m.left + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW); };
+    var y = function (v) { return m.top + plotH - (v / max) * plotH; };
+
+    /* recessive gridlines + axis */
+    for (var g = 0; g <= ticks; g++) {
+      var v = (max / ticks) * g;
+      el('line', { x1: m.left, x2: m.left + plotW, y1: y(v), y2: y(v), class: 'viz-grid' }, svg);
+      var lab = el('text', { x: m.left - 8, y: y(v), 'text-anchor': 'end', 'dominant-baseline': 'central', class: 'viz-axis' }, svg);
+      lab.textContent = Math.round(v);
+    }
+
+    var path = data.map(function (d, i) { return (i ? 'L' : 'M') + x(i) + ' ' + y(d.value); }).join(' ');
+    el('path', {
+      d: path + ' L' + x(data.length - 1) + ' ' + (m.top + plotH) + ' L' + x(0) + ' ' + (m.top + plotH) + ' Z',
+      class: 'viz-area'
+    }, svg);
+    el('path', { d: path, class: 'viz-line' }, svg);
+
+    /* x labels: first, middle, last only — no collisions */
+    [0, Math.floor((data.length - 1) / 2), data.length - 1].filter(function (v, i, a) { return a.indexOf(v) === i; })
+      .forEach(function (i) {
+        var t = el('text', {
+          x: x(i), y: height - 6,
+          'text-anchor': i === 0 ? 'start' : (i === data.length - 1 ? 'end' : 'middle'),
+          class: 'viz-axis'
+        }, svg);
+        t.textContent = fmtDay(data[i].key);
+      });
+
+    var cross = el('line', { class: 'viz-cross', y1: m.top, y2: m.top + plotH, x1: 0, x2: 0, opacity: 0 }, svg);
+    var dot = el('circle', { r: 4.5, class: 'viz-dot', opacity: 0 }, svg);
+
+    var hit = el('rect', { x: m.left, y: m.top, width: plotW, height: plotH, fill: 'transparent' }, svg);
+    hit.addEventListener('mousemove', function (e) {
+      var box = svg.getBoundingClientRect();
+      var px = (e.clientX - box.left) * (width / box.width);
+      var i = Math.round(((px - m.left) / plotW) * (data.length - 1));
+      i = Math.max(0, Math.min(data.length - 1, i));
+      cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1);
+      dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(data[i].value)); dot.setAttribute('opacity', 1);
+      showTip('<strong>' + esc(fmtDayLong(data[i].key)) + '</strong><br>' +
+        data[i].value + ' ' + (data[i].value === 1 ? 'ticket' : 'tickets') + ' logged', e);
+    });
+    hit.addEventListener('mouseleave', function () {
+      cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); hideTip();
+    });
+    return svg;
+  }
+
+  /* ---------------- heatmap ----------------
+     One hue, light to dark — magnitude of system x business unit. */
+  function heatmap(host, opts) {
+    host.innerHTML = '';
+    var rows = opts.rows || [], cols = opts.cols || [], cells = opts.cells || [];
+    var max = 0;
+    cells.forEach(function (r) { r.forEach(function (v) { max = Math.max(max, v); }); });
+    if (!max) return empty(host, opts.emptyText);
+
+    var labelW = 170, headH = 82, gap = 3;
+    /* the rotated column headings run up and to the right of the last cell */
+    var rightPad = 92;
+    /* grow the cells to use the width available, within sensible bounds */
+    var avail = (host.clientWidth || 640) - labelW - rightPad - 2;
+    var cell = Math.max(28, Math.min(48, Math.floor(avail / cols.length) - gap));
+    var width = labelW + cols.length * (cell + gap) + rightPad;
+    var height = headH + rows.length * (cell + gap);
+
+    var svg = el('svg', {
+      viewBox: '0 0 ' + width + ' ' + height,
+      width: width, height: height,
+      style: 'display:block',
+      role: 'img', 'aria-label': 'System by business unit impact matrix'
+    }, host);
+
+    cols.forEach(function (c, j) {
+      var cx = labelW + j * (cell + gap) + cell / 2;
+      var t = el('text', {
+        x: cx, y: headH - 10, class: 'viz-axis',
+        transform: 'rotate(-45 ' + cx + ' ' + (headH - 10) + ')', 'text-anchor': 'start'
+      }, svg);
+      t.textContent = c.short;
+    });
+
+    rows.forEach(function (r, i) {
+      var ry = headH + i * (cell + gap);
+      var t = el('text', {
+        x: labelW - 10, y: ry + cell / 2, 'text-anchor': 'end',
+        'dominant-baseline': 'central', class: 'viz-label'
+      }, svg);
+      t.textContent = r.short;
+
+      cols.forEach(function (c, j) {
+        var v = cells[i][j];
+        var rect = el('rect', {
+          x: labelW + j * (cell + gap), y: ry, width: cell, height: cell, rx: 3,
+          fill: v ? rampColor(v / max) : 'var(--viz-track)',
+          class: 'viz-cell' + (opts.onSelect ? ' is-clickable' : '')
+        }, svg);
+        if (v) {
+          var lab = el('text', {
+            x: labelW + j * (cell + gap) + cell / 2, y: ry + cell / 2,
+            'text-anchor': 'middle', 'dominant-baseline': 'central',
+            class: 'viz-cell-value', fill: v / max > 0.55 ? '#fff' : 'var(--text-primary)'
+          }, svg);
+          lab.textContent = v;
+        }
+        rect.addEventListener('mousemove', function (e) {
+          showTip('<strong>' + esc(r.label) + '</strong><br>' + esc(c.label) + '<br>' +
+            v + ' ' + (v === 1 ? 'ticket' : 'tickets'), e);
+        });
+        rect.addEventListener('mouseleave', hideTip);
+        if (opts.onSelect) rect.addEventListener('click', function () { hideTip(); opts.onSelect(r, c, v); });
+      });
+    });
+    return svg;
+  }
+
+  /* Sequential blue ramp, 100 -> 700. */
+  var RAMP = ['#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec',
+              '#5598e7', '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95', '#104281', '#0d366b'];
+  function rampColor(t) {
+    var i = Math.round(Math.min(1, Math.max(0, t)) * (RAMP.length - 3)) + 2;
+    return RAMP[Math.min(RAMP.length - 1, i)];
+  }
+
+  function fmtDay(iso) {
+    var d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+
+  function fmtDayLong(iso) {
+    var d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  return { barH: barH, line: line, heatmap: heatmap, hideTip: hideTip, rampColor: rampColor };
+})();
+</script>
+<script>
+/* ------------------------------------------------------------------
+   OCR — photograph a ticket, read it, and turn the text into the
+   fields the dashboard needs.
+
+   Pipeline:  image -> canvas pre-process -> Tesseract -> parse -> ticket
+   Tesseract.js is loaded from a CDN; if it is unavailable the capture
+   tab degrades to "attach the photo, type the fields".
+   ------------------------------------------------------------------ */
+
+window.OCR = (function () {
+  var worker = null;
+  var workerPromise = null;
+
+  function available() { return typeof window.Tesseract !== 'undefined'; }
+
+  function ensureWorker(onProgress) {
+    if (worker) return Promise.resolve(worker);
+    if (!available()) return Promise.reject(new Error('Text recognition library is not loaded.'));
+    if (!workerPromise) {
+      /* Everything is served from vendor/ so this works with no network. */
+      workerPromise = window.Tesseract.createWorker('eng', 1, {
+        logger: function (m) {
+          if (onProgress && m.status) onProgress(m.status, m.progress || 0);
+        }
+      }).then(function (w) { worker = w; return w; });
+    }
+    return workerPromise;
+  }
+
+  /* ---------------- image handling ---------------- */
+
+  function loadImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Could not read that image.')); };
+      img.src = url;
+    });
+  }
+
+  /* Upscale small photos, drop to greyscale and stretch contrast —
+     cheap steps that make a phone snap far more readable. */
+  function preprocess(img) {
+    var targetW = Math.min(2000, Math.max(1200, img.naturalWidth));
+    var scale = targetW / img.naturalWidth;
+    var w = Math.round(img.naturalWidth * scale);
+    var h = Math.round(img.naturalHeight * scale);
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    try {
+      var d = ctx.getImageData(0, 0, w, h);
+      var px = d.data, i, g;
+      var min = 255, max = 0;
+      for (i = 0; i < px.length; i += 4) {
+        g = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
+        px[i] = px[i + 1] = px[i + 2] = g;
+        if (g < min) min = g;
+        if (g > max) max = g;
+      }
+      var range = Math.max(1, max - min);
+      for (i = 0; i < px.length; i += 4) {
+        g = ((px[i] - min) / range) * 255;
+        g = g < 0 ? 0 : g > 255 ? 255 : g;
+        px[i] = px[i + 1] = px[i + 2] = g;
+      }
+      ctx.putImageData(d, 0, 0);
+    } catch (e) {
+      /* tainted canvas or out of memory — carry on with the plain draw */
+    }
+    return c;
+  }
+
+  function thumbnail(img, maxSide) {
+    maxSide = maxSide || 420;
+    var scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    var c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * scale);
+    c.height = Math.round(img.naturalHeight * scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    try { return c.toDataURL('image/jpeg', 0.6); } catch (e) { return null; }
+  }
+
+  function read(file, onProgress) {
+    return loadImage(file).then(function (img) {
+      var thumb = thumbnail(img);
+      var canvas = preprocess(img);
+      return ensureWorker(onProgress).then(function (w) {
+        return w.recognize(canvas);
+      }).then(function (res) {
+        return {
+          text: (res && res.data && res.data.text) || '',
+          confidence: (res && res.data && res.data.confidence) || 0,
+          thumb: thumb,
+          fileName: file.name || 'photo'
+        };
+      });
+    });
+  }
+
+  function terminate() {
+    if (worker) { try { worker.terminate(); } catch (e) {} }
+    worker = null; workerPromise = null;
+  }
+
+  /* ---------------- text parsing ---------------- */
+
+  var LABELS = {
+    systemNo:      ['system no', 'system number', 'system num', 'system #', 'sys no', 'sys #', 'system'],
+    systemName:    ['system name', 'application', 'app name', 'service'],
+    systemId:      ['system id', 'system i d', 'sys id', 'systemid', 'system ref', 'system reference',
+                    'configuration item', 'configuration item code', 'config item', 'item code',
+                    'ci code', 'ci', 'code', 'asset id'],
+    businessUnits: ['business unit', 'business units', 'business area', 'impacted business unit',
+                    'impacted business units', 'bu', 'bus unit', 'business unit impacted',
+                    'business units impacted', 'impacted area', 'impacted areas'],
+    answerCode:    ['answer code', 'answer', 'resolution code', 'closure code', 'res code', 'fix code'],
+    summary:       ['issue', 'summary', 'description', 'fault', 'problem', 'detail', 'details'],
+    ref:           ['ticket', 'ticket no', 'ticket number', 'ticket ref', 'incident', 'incident no',
+                    'call ref', 'reference', 'ref'],
+    priority:      ['priority', 'severity', 'sev'],
+    status:        ['status', 'state'],
+    reportedBy:    ['reported by', 'raised by', 'caller', 'customer', 'requested by', 'contact'],
+    loggedBy:      ['logged by', 'agent', 'analyst', 'assigned to'],
+    date:          ['date', 'logged', 'logged at', 'raised', 'date logged', 'received']
+  };
+
+  function clean(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+
+  /* Every four digit window inside each run of digits, so a value with a
+     stray leading digit still offers up the code it contains. */
+  function fourDigitWindows(s) {
+    var out = [];
+    (String(s).match(/\d+/g) || []).forEach(function (run) {
+      for (var i = 0; i + 4 <= run.length; i++) out.push(run.substr(i, 4));
+    });
+    return out;
+  }
+
+  function key(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /* Digits are what matter most here, so repair the classic
+     letter-for-digit OCR slips inside otherwise numeric runs. */
+  function digitFix(s) {
+    /* No lookbehind — older Safari throws on it at parse time. */
+    var src = String(s || '');
+    var map = { o: '0', O: '0', l: '1', I: '1', '|': '1', s: '5', S: '5', b: '6', B: '6' };
+    var out = '';
+    for (var i = 0; i < src.length; i++) {
+      var ch = src[i];
+      if (map[ch]) {
+        var prev = src[i - 1], next = src[i + 1];
+        var touchesDigit = (prev && prev >= '0' && prev <= '9') || (next && next >= '0' && next <= '9');
+        out += touchesDigit ? map[ch] : ch;
+      } else {
+        out += ch;
+      }
+    }
+    return out;
+  }
+
+  function labelOf(left) {
+    var k = key(left);
+    if (!k) return null;
+    var best = null, bestLen = 0;
+    Object.keys(LABELS).forEach(function (field) {
+      LABELS[field].forEach(function (alias) {
+        if ((k === alias || k.endsWith(' ' + alias) || k.startsWith(alias + ' ') || k === alias.replace(/ /g, ''))
+            && alias.length > bestLen) {
+          best = field; bestLen = alias.length;
+        }
+      });
+    });
+    return best;
+  }
+
+  /* A camera loses colons — it reads them as 1, l, . or nothing at all.
+     So when a line has no separator, try each known label as a prefix
+     and take whatever follows it as the value. */
+  function labelPrefix(line) {
+    var best = null, bestLen = 0;
+    Object.keys(LABELS).forEach(function (field) {
+      LABELS[field].forEach(function (alias) {
+        if (alias.length <= bestLen) return;
+        var pattern = '^\\s*' + alias.split(' ').map(function (w) {
+          return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }).join('\\W*') + '\\W*(.+)$';
+        var m = new RegExp(pattern, 'i').exec(line);
+        if (m && clean(m[1])) { best = { field: field, value: clean(m[1]) }; bestLen = alias.length; }
+      });
+    });
+    return best;
+  }
+
+  /* label: value pairs, one per line, plus the raw lines. */
+  function scanLines(text) {
+    var lines = String(text || '').split(/\r?\n/).map(clean).filter(Boolean);
+    var pairs = {};
+    lines.forEach(function (line) {
+      var m = /^(.{2,40}?)\s*[:\-–]\s*(.+)$/.exec(line);
+      var field = m ? labelOf(m[1]) : null;
+      if (field) {
+        if (!pairs[field]) pairs[field] = clean(m[2]);
+        return;
+      }
+      if (m) return;                       /* a separator, but not a label we know */
+      var hit = labelPrefix(line);
+      if (hit && !pairs[hit.field]) pairs[hit.field] = hit.value;
+    });
+    return { lines: lines, pairs: pairs };
+  }
+
+  function tokenScore(needle, hay) {
+    var nt = key(needle).split(' ').filter(function (t) { return t.length > 2; });
+    if (!nt.length) return 0;
+    var h = key(hay);
+    var hit = nt.filter(function (t) { return h.indexOf(t) !== -1; }).length;
+    return hit / nt.length;
+  }
+
+  /* Glyphs a camera mixes up, as equivalence classes. D is deliberately
+     kept out of the 0/O class: PO-1 and PD-1 are both real codes and must
+     stay distinct. Within a class the characters are interchangeable,
+     which is why NN-1 and NN-2 still cannot be confused with each other. */
+  var CONFUSABLE = ['0O', '1IL', '5S', '8B', '2Z', '6G'];
+
+  function confusableWith(a, b) {
+    for (var i = 0; i < CONFUSABLE.length; i++) {
+      if (CONFUSABLE[i].indexOf(a) !== -1 && CONFUSABLE[i].indexOf(b) !== -1) return true;
+    }
+    return false;
+  }
+
+  function normCode(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+  function codeEquals(a, b) {
+    a = normCode(a); b = normCode(b);
+    if (!a || a.length !== b.length) return { match: false, exact: false };
+    var exact = true;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] === b[i]) continue;
+      if (confusableWith(a[i], b[i])) { exact = false; continue; }
+      return { match: false, exact: false };
+    }
+    return { match: true, exact: exact };
+  }
+
+  /* Look through the text for a token that is one of the known codes.
+     An exact hit always wins; a look-alike hit is only used when it is
+     the only one, so an ambiguous smudge is reported rather than guessed. */
+  function findConfigCode(text, systems) {
+    var withCodes = systems.filter(function (s) { return s.code; });
+    if (!withCodes.length) return null;
+
+    var tokens = String(text || '').toUpperCase().match(/[A-Z0-9]+(?:[-.][A-Z0-9]+)*/g) || [];
+    var candidates = tokens.slice();
+    /* also try neighbouring tokens joined, for a code written "CA 1" */
+    for (var i = 0; i < tokens.length - 1; i++) candidates.push(tokens[i] + tokens[i + 1]);
+
+    var loose = [];
+    for (var c = 0; c < candidates.length; c++) {
+      for (var s = 0; s < withCodes.length; s++) {
+        var r = codeEquals(candidates[c], withCodes[s].code);
+        if (!r.match) continue;
+        if (r.exact) return { system: withCodes[s], exact: true, read: candidates[c] };
+        if (loose.every(function (l) { return l.system.no !== withCodes[s].no; })) {
+          loose.push({ system: withCodes[s], exact: false, read: candidates[c] });
+        }
+      }
+    }
+    return loose.length === 1 ? loose[0] : null;
+  }
+
+  function matchSystemByName(text, systems) {
+    var best = null, bestScore = 0;
+    systems.forEach(function (s) {
+      var score = tokenScore(s.name, text);
+      if (score > bestScore) { bestScore = score; best = s; }
+    });
+    return bestScore >= 0.5 ? { system: best, score: bestScore } : null;
+  }
+
+  function parseUnitList(value, units) {
+    var found = {};
+    /* "3,4and 9" comes back as one token, so part the digits from the
+       letters before looking for numbers */
+    var v = digitFix(value || '')
+      .replace(/(\d)(?=[A-Za-z])/g, '$1 ')
+      .replace(/([A-Za-z])(?=\d)/g, '$1 ');
+    /* explicit numbers: "1, 4 and 7" / "BU3" */
+    (v.match(/\b\d{1,2}\b/g) || []).forEach(function (n) {
+      n = Number(n);
+      if (n >= 1 && n <= units.length + 90 && units.some(function (u) { return Number(u.no) === n; })) found[n] = true;
+    });
+    /* named units */
+    units.forEach(function (u) {
+      if (tokenScore(u.name, v) >= 0.75 || (u.short && tokenScore(u.short, v) >= 0.9)) found[u.no] = true;
+    });
+    return Object.keys(found).map(Number).sort(function (a, b) { return a - b; });
+  }
+
+  /**
+   * Turn recognised text into a draft ticket.
+   * Returns { fields, confidence, missing, notes, evidence }.
+   */
+  function parse(text, config) {
+    var scan = scanLines(text);
+    var pairs = scan.pairs;
+    var whole = scan.lines.join('\n');
+    var fields = {};
+    var evidence = {};
+    var notes = [];
+
+    function set(name, value, how) {
+      if (value === null || value === undefined || value === '' ||
+          (Array.isArray(value) && !value.length)) return;
+      fields[name] = value;
+      evidence[name] = how;
+    }
+
+    /* --- system number --- */
+    var sysNo = null;
+    if (pairs.systemNo) {
+      var mNo = /\b(\d{1,2})\b/.exec(digitFix(pairs.systemNo));
+      if (mNo) sysNo = Number(mNo[1]);
+    }
+    if (sysNo === null) {
+      var inline = /\bsystem\s*(?:no\.?|number|#)?\s*[:\-]?\s*(\d{1,2})\b/i.exec(digitFix(whole));
+      if (inline) sysNo = Number(inline[1]);
+    }
+    if (sysNo !== null && !config.systems.some(function (s) { return Number(s.no) === sysNo; })) {
+      notes.push('System number ' + sysNo + ' is outside the configured range — check the photo.');
+      sysNo = null;
+    }
+
+    /* --- system name (also backfills the number) --- */
+    var named = null;
+    if (pairs.systemName) named = matchSystemByName(pairs.systemName, config.systems);
+    if (!named) named = matchSystemByName(whole, config.systems);
+
+    if (sysNo === null && named) {
+      sysNo = Number(named.system.no);
+      set('systemNo', sysNo, 'derived from the system name');
+    } else if (sysNo !== null) {
+      set('systemNo', sysNo, pairs.systemNo ? 'read from a labelled field' : 'read from the text');
+      if (named && Number(named.system.no) !== sysNo) {
+        notes.push('The number says system ' + sysNo + ' but the text reads like "' +
+          named.system.name + '" (system ' + named.system.no + '). Kept the number — please confirm.');
+      }
+    }
+
+    /* --- configuration item code ---
+       The code belongs to the system, so finding one identifies the
+       system too, and knowing the system supplies the code. */
+    var codeHit = null;
+    if (pairs.systemId) codeHit = findConfigCode(pairs.systemId, config.systems);
+    if (!codeHit) codeHit = findConfigCode(whole, config.systems);
+
+    if (codeHit) {
+      set('systemId', codeHit.system.code,
+        codeHit.exact
+          ? (pairs.systemId ? 'read from a labelled field' : 'matched against the code list')
+          : 'matched against the code list, allowing for look-alike characters');
+
+      if (fields.systemNo === undefined) {
+        set('systemNo', Number(codeHit.system.no), 'identified by the item code');
+      } else if (Number(fields.systemNo) !== Number(codeHit.system.no)) {
+        notes.push('The code ' + codeHit.system.code + ' belongs to system ' + codeHit.system.no +
+          ' (' + codeHit.system.name + '), not system ' + fields.systemNo + '. Please confirm which is right.');
+      }
+    } else if (pairs.systemId) {
+      var typed = clean(pairs.systemId).split(/\s{2,}/)[0].toUpperCase();
+      if (typed) {
+        set('systemId', typed, 'read from a labelled field');
+        notes.push('The code ' + typed + ' is not in the system list — check it, or add it on the Reference data tab.');
+      }
+    }
+
+    /* Still nothing, but we know the system: use the code recorded for it. */
+    if (fields.systemId === undefined && fields.systemNo !== undefined) {
+      var owner = config.systems.filter(function (s) { return Number(s.no) === Number(fields.systemNo); })[0];
+      if (owner && owner.code) set('systemId', owner.code, 'the code recorded for this system');
+    }
+
+    /* --- business units --- */
+    var units = [];
+    if (pairs.businessUnits) units = parseUnitList(pairs.businessUnits, config.businessUnits);
+    if (!units.length) {
+      var buLine = scan.lines.filter(function (l) { return /business\s*unit|impacted/i.test(l); }).join(' ');
+      if (buLine) units = parseUnitList(buLine.replace(/business\s*units?/ig, ''), config.businessUnits);
+    }
+    if (!units.length) units = parseUnitList(whole, config.businessUnits).filter(function (n) {
+      /* only accept name matches from free text, never bare numbers */
+      var u = config.businessUnits.filter(function (x) { return Number(x.no) === n; })[0];
+      return u && tokenScore(u.name, whole) >= 0.75;
+    });
+    if (units.length) set('businessUnits', units, pairs.businessUnits ? 'read from a labelled field' : 'matched unit names in the text');
+
+    /* --- answer code --- */
+    function isKnownCode(c) {
+      return config.answerCodes.some(function (a) { return a.code === c; });
+    }
+
+    var code = '';
+    if (pairs.answerCode) {
+      /* a colon misread as a digit glues itself to the value ("12010"),
+         so prefer any four digit window that is actually in the list */
+      var known4 = fourDigitWindows(digitFix(pairs.answerCode)).filter(isKnownCode);
+      code = known4[0] || (/\b(\d{4})\b/.exec(digitFix(pairs.answerCode)) || [])[1] || '';
+    }
+    if (!code) {
+      var inlineCode = /\b(?:answer|resolution|closure|fix)\s*code\s*[:\-]?\s*(\d{4})\b/i.exec(digitFix(whole));
+      if (inlineCode) code = inlineCode[1];
+    }
+    if (!code) {
+      /* any four digit run that is a known code wins over a random one */
+      var candidates = (digitFix(whole).match(/\b\d{4}\b/g) || []);
+      var known = candidates.filter(isKnownCode);
+      if (known.length) {
+        code = known[0];
+        if (known.length > 1) notes.push('More than one known answer code appears in the photo (' +
+          known.slice(0, 3).join(', ') + '). Took the first.');
+      } else if (candidates.length === 1 && !/^(19|20)\d{2}$/.test(candidates[0])) {
+        code = candidates[0];
+      }
+    }
+    if (code) {
+      set('answerCode', code, pairs.answerCode ? 'read from a labelled field' : 'four digit code found in the text');
+      if (!config.answerCodes.some(function (a) { return a.code === code; })) {
+        notes.push('Answer code ' + code + ' is not in the code list — check it.');
+      }
+    }
+
+    /* --- the softer fields --- */
+    if (pairs.ref) {
+      var r = /\b([A-Z]{2,4}[- ]?\d{3,8}|\d{5,8})\b/i.exec(digitFix(pairs.ref));
+      if (r) set('sourceRef', r[1].toUpperCase().replace(/\s+/g, '-'), 'read from a labelled field');
+    }
+
+    var pr = pairs.priority || whole;
+    var mPr = /\bP\s?([1-4]|[lI])\b/.exec(pr) || /\bp\s?([1-4])\b/i.exec(pr);
+    if (mPr) set('priority', 'P' + (/[lI]/.test(mPr[1]) ? '1' : mPr[1]), 'read from the text');
+    else if (pairs.priority) {
+      var word = key(pairs.priority);
+      var map = { critical: 'P1', urgent: 'P1', high: 'P2', medium: 'P3', normal: 'P3', standard: 'P3', low: 'P4', minor: 'P4' };
+      Object.keys(map).forEach(function (w) { if (word.indexOf(w) !== -1 && !fields.priority) set('priority', map[w], 'mapped from "' + w + '"'); });
+    }
+
+    if (pairs.status) {
+      var st = config.statuses.filter(function (s) { return tokenScore(s, pairs.status) >= 0.75; })[0];
+      if (st) set('status', st, 'read from a labelled field');
+    }
+
+    if (pairs.reportedBy) set('reportedBy', pairs.reportedBy.slice(0, 80), 'read from a labelled field');
+    if (pairs.loggedBy) set('loggedBy', pairs.loggedBy.slice(0, 80), 'read from a labelled field');
+
+    var summary = pairs.summary || '';
+    if (!summary) {
+      /* longest wordy line that is not itself a label line */
+      var best = '';
+      scan.lines.forEach(function (l) {
+        if (/[:–]/.test(l) && labelOf(l.split(/[:–]/)[0])) return;
+        var words = l.split(/\s+/).filter(function (w) { return /[a-z]{3,}/i.test(w); });
+        if (words.length >= 4 && l.length > best.length) best = l;
+      });
+      summary = best;
+    }
+    if (summary) set('summary', summary.slice(0, 300), pairs.summary ? 'read from a labelled field' : 'longest descriptive line');
+
+    var when = pairs.date ? parseDate(pairs.date) : null;
+    if (when) set('loggedAt', when, 'read from a labelled field');
+
+    /* --- how complete is this? --- */
+    var required = ['systemNo', 'systemId', 'businessUnits', 'answerCode'];
+    var identified = fields.systemNo !== undefined
+      ? config.systems.filter(function (s) { return Number(s.no) === Number(fields.systemNo); })[0]
+      : null;
+    if (identified && !identified.code) {
+      required = required.filter(function (f) { return f !== 'systemId'; });
+    }
+    var missing = required.filter(function (f) {
+      return fields[f] === undefined || (Array.isArray(fields[f]) && !fields[f].length);
+    });
+    var confidence = Math.round(((required.length - missing.length) / required.length) * 100);
+
+    return {
+      fields: fields, evidence: evidence, missing: missing,
+      notes: notes, confidence: confidence, lines: scan.lines
+    };
+  }
+
+  function parseDate(s) {
+    var v = clean(s);
+    var m = /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/.exec(v);
+    if (m) {
+      var yr = Number(m[3]); if (yr < 100) yr += 2000;
+      var d = new Date(Date.UTC(yr, Number(m[2]) - 1, Number(m[1])));
+      if (!isNaN(d)) return d.toISOString();
+    }
+    var iso = /(\d{4})-(\d{2})-(\d{2})/.exec(v);
+    if (iso) return new Date(iso[0] + 'T00:00:00Z').toISOString();
+    var loose = new Date(v);
+    return isNaN(loose) ? null : loose.toISOString();
+  }
+
+  return {
+    available: available, read: read, parse: parse, terminate: terminate,
+    _internals: {
+      scanLines: scanLines, parseUnitList: parseUnitList, digitFix: digitFix,
+      labelOf: labelOf, findConfigCode: findConfigCode, codeEquals: codeEquals
+    }
+  };
+})();
+</script>
+<script>
+/* ------------------------------------------------------------------
+   Dashboard — reads the filtered ticket set and paints the tiles,
+   charts and table. Every chart is one measure on one axis.
+   ------------------------------------------------------------------ */
+
+window.Dashboard = (function () {
+  var filter = Object.assign({}, window.Store.EMPTY_FILTER);
+  var sort = { key: 'loggedAt', dir: -1 };
+  var onEdit = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function $(sel) { return document.querySelector(sel); }
+
+  function getFilter() { return filter; }
+
+  function setFilter(patch, rerender) {
+    Object.assign(filter, patch);
+    syncFilterControls();
+    if (rerender !== false) render();
+  }
+
+  function clearFilter() {
+    filter = Object.assign({}, window.Store.EMPTY_FILTER);
+    syncFilterControls();
+    render();
+  }
+
+  function activeCount() {
+    return Object.keys(window.Store.EMPTY_FILTER).filter(function (k) { return filter[k]; }).length;
+  }
+
+  /* ---------------- filter bar ---------------- */
+
+  function buildFilterControls() {
+    var cfg = window.Store.getConfig();
+    fill('#f-system', cfg.systems.map(function (s) { return { v: s.no, t: s.no + '. ' + s.name }; }), 'All systems');
+    fill('#f-unit', cfg.businessUnits.map(function (u) { return { v: u.no, t: u.no + '. ' + u.name }; }), 'All business units');
+    fill('#f-answer', cfg.answerCodes.map(function (a) { return { v: a.code, t: a.code + ' — ' + a.label }; }), 'All answer codes');
+    fill('#f-status', cfg.statuses.map(function (s) { return { v: s, t: s }; }), 'Any status');
+    fill('#f-priority', cfg.priorities.map(function (p) { return { v: p, t: p }; }), 'Any priority');
+  }
+
+  function fill(sel, items, allLabel) {
+    var node = $(sel);
+    if (!node) return;
+    var current = node.value;
+    node.innerHTML = '<option value="">' + esc(allLabel) + '</option>' +
+      items.map(function (i) { return '<option value="' + esc(i.v) + '">' + esc(i.t) + '</option>'; }).join('');
+    node.value = current;
+  }
+
+  function syncFilterControls() {
+    var map = {
+      '#f-system': 'system', '#f-unit': 'unit', '#f-answer': 'answer',
+      '#f-status': 'status', '#f-priority': 'priority',
+      '#f-from': 'from', '#f-to': 'to', '#f-text': 'text'
+    };
+    Object.keys(map).forEach(function (sel) {
+      var node = $(sel);
+      if (node && node.value !== String(filter[map[sel]] || '')) node.value = filter[map[sel]] || '';
+    });
+    var badge = $('#filter-count');
+    if (badge) {
+      var n = activeCount();
+      badge.textContent = n ? n + ' filter' + (n === 1 ? '' : 's') + ' active' : 'No filters';
+      badge.classList.toggle('is-on', n > 0);
+    }
+  }
+
+  function wireFilters(rerender) {
+    var map = {
+      'f-system': 'system', 'f-unit': 'unit', 'f-answer': 'answer',
+      'f-status': 'status', 'f-priority': 'priority',
+      'f-from': 'from', 'f-to': 'to'
+    };
+    Object.keys(map).forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node) node.addEventListener('change', function () { filter[map[id]] = node.value; syncFilterControls(); rerender(); });
+    });
+    var text = document.getElementById('f-text');
+    if (text) {
+      var timer = null;
+      text.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(function () { filter.text = text.value; syncFilterControls(); rerender(); }, 180);
+      });
+    }
+    var clear = document.getElementById('f-clear');
+    if (clear) clear.addEventListener('click', clearFilter);
+  }
+
+  /* ---------------- tiles ---------------- */
+
+  function tile(label, value, note, tone) {
+    return '<div class="tile' + (tone ? ' tone-' + tone : '') + '">' +
+      '<span class="tile-label">' + esc(label) + '</span>' +
+      '<span class="tile-value">' + esc(value) + '</span>' +
+      '<span class="tile-note">' + (note || '') + '</span></div>';
+  }
+
+  function renderTiles(list) {
+    var s = window.Store.summary(list);
+    var host = $('#tiles');
+    if (!host) return;
+    host.innerHTML =
+      tile('Tickets shown', s.total, s.today + ' logged today') +
+      tile('Still open', s.open, s.p1 ? '<span class="pill tone-critical">' + s.p1 + ' P1</span>' : 'No P1s open', s.p1 ? 'critical' : '') +
+      tile('Systems impacted', s.systemsImpacted + ' / ' + window.Store.getConfig().systems.length,
+           s.topSystem ? 'Worst: ' + esc(s.topSystem.short) + ' (' + s.topSystem.value + ')' : '&nbsp;') +
+      tile('Business units hit', s.unitsImpacted + ' / ' + window.Store.getConfig().businessUnits.length,
+           s.topUnit ? 'Worst: ' + esc(s.topUnit.short) + ' (' + s.topUnit.value + ')' : '&nbsp;') +
+      tile('Top answer code', s.topAnswer ? s.topAnswer.short : '—',
+           s.topAnswer ? esc((window.Store.answerByCode(s.topAnswer.key) || {}).label || 'Not in the code list') : '&nbsp;') +
+      tile('From photos', s.fromPhoto, s.uncoded ? '<span class="pill tone-warning">' + s.uncoded + ' uncoded</span>' : 'All tickets coded');
+  }
+
+  /* ---------------- charts ---------------- */
+
+  function renderCharts(list) {
+    var total = list.length;
+
+    window.Charts.barH($('#chart-systems'), {
+      data: window.Store.countBySystem(list),
+      total: total, limit: 22, labelWidth: 190, color: 'var(--series-1)',
+      ariaLabel: 'Tickets by system',
+      emptyText: 'No tickets for these filters.',
+      onSelect: function (d) { setFilter({ system: String(d.key) }); }
+    });
+
+    window.Charts.barH($('#chart-units'), {
+      data: window.Store.countByUnit(list),
+      total: total, labelWidth: 150, color: 'var(--series-2)',
+      ariaLabel: 'Tickets by business unit',
+      onSelect: function (d) { setFilter({ unit: String(d.key) }); }
+    });
+
+    window.Charts.barH($('#chart-answers'), {
+      data: window.Store.countByAnswer(list), limit: 10,
+      total: total, labelWidth: 76, color: 'var(--series-3)',
+      ariaLabel: 'Most used answer codes',
+      onSelect: function (d) { setFilter({ answer: String(d.key) }); }
+    });
+
+    var priTone = { P1: 'var(--status-critical)', P2: 'var(--status-serious)', P3: 'var(--status-warning)', P4: 'var(--status-good)' };
+    var pri = window.Store.getConfig().priorities.map(function (p) {
+      return {
+        key: p, label: p, short: p, color: priTone[p] || 'var(--series-1)',
+        value: list.filter(function (t) { return t.priority === p; }).length
+      };
+    });
+    window.Charts.barH($('#chart-priority'), {
+      data: pri, sort: false, total: total, labelWidth: 60, rowHeight: 22,
+      ariaLabel: 'Tickets by priority',
+      onSelect: function (d) { setFilter({ priority: String(d.key) }); }
+    });
+
+    window.Charts.line($('#chart-trend'), {
+      data: window.Store.countByDay(list, 21), height: 190,
+      ariaLabel: 'Tickets logged per day'
+    });
+
+    var m = window.Store.impactMatrix(list);
+    window.Charts.heatmap($('#chart-heatmap'), {
+      rows: m.rows, cols: m.cols, cells: m.cells,
+      onSelect: function (r, c) { setFilter({ system: String(r.key), unit: String(c.key) }); }
+    });
+  }
+
+  /* ---------------- table ---------------- */
+
+  var COLUMNS = [
+    { key: 'ref', label: 'Ref' },
+    { key: 'loggedAt', label: 'Logged' },
+    { key: 'systemNo', label: 'Sys' },
+    { key: 'systemName', label: 'System' },
+    { key: 'systemId', label: 'System id' },
+    { key: 'businessUnits', label: 'Business units', sortable: false },
+    { key: 'answerCode', label: 'Answer' },
+    { key: 'priority', label: 'Pri' },
+    { key: 'status', label: 'Status' },
+    { key: 'summary', label: 'Summary', sortable: false },
+    { key: 'source', label: 'Source' }
+  ];
+
+  function sortList(list) {
+    var k = sort.key, dir = sort.dir;
+    return list.slice().sort(function (a, b) {
+      var av = a[k], bv = b[k];
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }
+
+  function renderTable(list) {
+    var host = $('#table-host');
+    if (!host) return;
+    if (!list.length) {
+      host.innerHTML = '<p class="viz-empty">No tickets match the current filters.</p>';
+      return;
+    }
+    var rows = sortList(list);
+    var head = COLUMNS.map(function (c) {
+      var on = sort.key === c.key;
+      return '<th' + (c.sortable === false ? '' : ' class="sortable' + (on ? ' is-sorted' : '') +
+        '" data-sort="' + c.key + '" tabindex="0" role="button"') + '>' +
+        esc(c.label) + (on ? '<span aria-hidden="true">' + (sort.dir > 0 ? ' ▲' : ' ▼') + '</span>' : '') + '</th>';
+    }).join('');
+
+    var body = rows.map(function (t) {
+      var idCheck = window.Store.validateSystemId(t.systemNo, t.systemId);
+      var ans = window.Store.answerByCode(t.answerCode);
+      return '<tr data-id="' + esc(t.id) + '">' +
+        '<td class="mono">' + esc(t.ref) + '</td>' +
+        '<td class="nowrap">' + esc(fmtDateTime(t.loggedAt)) + '</td>' +
+        '<td class="num">' + esc(t.systemNo) + '</td>' +
+        '<td>' + esc(t.systemName) + '</td>' +
+        '<td class="mono">' + esc(t.systemId || '—') +
+          (t.systemId && !idCheck.ok ? ' <span class="pill tone-warning" title="Expected something like ' +
+            esc(idCheck.expected) + '">?</span>' : '') + '</td>' +
+        '<td>' + (t.businessUnits.length
+            ? t.businessUnits.map(function (u) {
+                return '<span class="chip" title="' + esc(window.Store.unitLabel(u)) + '">' + u + '</span>';
+              }).join('')
+            : '—') + '</td>' +
+        '<td class="mono" title="' + esc(ans ? ans.label : 'Not in the code list') + '">' + esc(t.answerCode || '—') +
+          (t.answerCode && !ans ? ' <span class="pill tone-warning">?</span>' : '') + '</td>' +
+        '<td><span class="pri pri-' + esc(t.priority) + '">' + esc(t.priority) + '</span></td>' +
+        '<td class="nowrap">' + esc(t.status) + '</td>' +
+        '<td class="summary">' + esc(t.summary || '—') + '</td>' +
+        '<td>' + (t.source === 'photo'
+            ? '<span class="pill tone-photo" title="Captured from a photograph">photo</span>'
+            : '<span class="pill">' + esc(t.source) + '</span>') + '</td>' +
+        '</tr>';
+    }).join('');
+
+    host.innerHTML = '<table class="grid"><thead><tr>' + head +
+      '</tr></thead><tbody>' + body + '</tbody></table>';
+
+    host.querySelectorAll('th.sortable').forEach(function (th) {
+      function apply() {
+        var k = th.getAttribute('data-sort');
+        if (sort.key === k) sort.dir *= -1; else { sort.key = k; sort.dir = 1; }
+        renderTable(list);
+      }
+      th.addEventListener('click', apply);
+      th.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apply(); } });
+    });
+
+    host.querySelectorAll('tbody tr').forEach(function (tr) {
+      tr.addEventListener('click', function () {
+        if (onEdit) onEdit(tr.getAttribute('data-id'));
+      });
+    });
+
+    var count = $('#table-count');
+    if (count) count.textContent = list.length + ' of ' + window.Store.all().length + ' tickets';
+  }
+
+  function fmtDateTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: '2-digit' }) +
+      ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /* ---------------- entry point ---------------- */
+
+  function filtered() {
+    return window.Store.applyFilter(window.Store.all(), filter);
+  }
+
+  function render() {
+    var list = filtered();
+    syncFilterControls();
+    renderTiles(list);
+    renderCharts(list);
+    renderTable(list);
+    var insight = $('#insight');
+    if (insight) insight.innerHTML = insightText(list);
+  }
+
+  function insightText(list) {
+    if (!list.length) return 'Log a ticket — or photograph one — and the picture builds itself.';
+    var s = window.Store.summary(list);
+    var bits = [];
+    if (s.topSystem) {
+      bits.push('<strong>' + esc(s.topSystem.short) + '</strong> carries the most tickets (' +
+        s.topSystem.value + ', ' + Math.round((s.topSystem.value / s.total) * 100) + '% of those shown)');
+    }
+    if (s.topUnit) {
+      bits.push('<strong>' + esc(s.topUnit.short) + '</strong> is the hardest hit business unit (' + s.topUnit.value + ')');
+    }
+    if (s.topAnswer) {
+      var a = window.Store.answerByCode(s.topAnswer.key);
+      bits.push('the commonest answer is <strong>' + esc(s.topAnswer.short) + '</strong>' +
+        (a ? ' — ' + esc(a.label.toLowerCase()) : ''));
+    }
+    return bits.join('; ') + '.';
+  }
+
+  function init(opts) {
+    onEdit = opts && opts.onEdit;
+    buildFilterControls();
+    wireFilters(render);
+    window.addEventListener('resize', debounce(render, 200));
+  }
+
+  function debounce(fn, ms) {
+    var t = null;
+    return function () { clearTimeout(t); t = setTimeout(fn, ms); };
+  }
+
+  return {
+    init: init, render: render, filtered: filtered,
+    getFilter: getFilter, setFilter: setFilter, clearFilter: clearFilter,
+    buildFilterControls: buildFilterControls
+  };
+})();
+</script>
+<script>
+/* ------------------------------------------------------------------
+   App — tabs, the ticket form, the photo capture queue, reference
+   data editing and import/export.
+   ------------------------------------------------------------------ */
+
+(function () {
+  var Store = window.Store, Dash = window.Dashboard, OCR = window.OCR;
+  var editingId = null;
+  var queue = [];          /* capture results awaiting confirmation */
+
+  function $(s, root) { return (root || document).querySelector(s); }
+  function $$(s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function toast(message, tone) {
+    var host = $('#toasts');
+    var node = document.createElement('div');
+    node.className = 'toast' + (tone ? ' tone-' + tone : '');
+    node.textContent = message;
+    host.appendChild(node);
+    setTimeout(function () { node.classList.add('is-out'); }, 3600);
+    setTimeout(function () { node.remove(); }, 4200);
+  }
+
+  /* ================= tabs ================= */
+
+  function showTab(name) {
+    $$('.tab-panel').forEach(function (p) { p.hidden = p.getAttribute('data-tab') !== name; });
+    $$('.tab-btn').forEach(function (b) {
+      var on = b.getAttribute('data-tab') === name;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (name === 'dashboard') Dash.render();
+    if (location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ================= theme ================= */
+
+  function applyTheme(mode) {
+    if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', mode);
+    Store.setPref('theme', mode);
+    var btn = $('#theme-btn');
+    if (btn) btn.textContent = mode === 'dark' ? 'Dark' : mode === 'light' ? 'Light' : 'Auto';
+    if (!$('.tab-panel[data-tab="dashboard"]').hidden) Dash.render();
+  }
+
+  function cycleTheme() {
+    var order = ['system', 'light', 'dark'];
+    var next = order[(order.indexOf(Store.getPrefs().theme || 'system') + 1) % order.length];
+    applyTheme(next);
+  }
+
+  /* ================= ticket form ================= */
+
+  function buildFormOptions() {
+    var cfg = Store.getConfig();
+
+    $('#t-system').innerHTML = '<option value="">Choose a system…</option>' +
+      cfg.systems.map(function (s) {
+        return '<option value="' + s.no + '">' + esc(s.no + '. ' + s.name) + '</option>';
+      }).join('');
+
+    $('#t-units').innerHTML = cfg.businessUnits.map(function (u) {
+      return '<label class="check"><input type="checkbox" name="bu" value="' + u.no + '"> ' +
+        '<span><b>' + u.no + '</b> ' + esc(u.name) + '</span></label>';
+    }).join('');
+
+    var byCat = {};
+    cfg.answerCodes.forEach(function (a) { (byCat[a.category] = byCat[a.category] || []).push(a); });
+    $('#t-answer').innerHTML = '<option value="">Choose an answer code…</option>' +
+      Object.keys(byCat).map(function (cat) {
+        return '<optgroup label="' + esc(cat) + '">' + byCat[cat].map(function (a) {
+          return '<option value="' + esc(a.code) + '">' + esc(a.code + ' — ' + a.label) + '</option>';
+        }).join('') + '</optgroup>';
+      }).join('');
+
+    $('#t-priority').innerHTML = cfg.priorities.map(function (p) {
+      return '<option value="' + esc(p) + '"' + (p === 'P3' ? ' selected' : '') + '>' + esc(p) + '</option>';
+    }).join('');
+    $('#t-status').innerHTML = cfg.statuses.map(function (s) {
+      return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+    }).join('');
+    $('#t-channel').innerHTML = cfg.channels.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+    }).join('');
+  }
+
+  function systemHint() {
+    var no = $('#t-system').value;
+    var s = no ? Store.systemByNo(no) : null;
+    var hint = $('#t-system-id-hint');
+    var input = $('#t-system-id');
+
+    if (!s) {
+      hint.textContent = 'Choose a system and its code appears here.';
+      input.placeholder = '';
+      validateId();
+      return;
+    }
+
+    /* The code belongs to the system, so fill it in — but leave anything
+       the analyst typed themselves alone. */
+    var previous = input.getAttribute('data-auto');
+    if (!input.value || input.value === previous) {
+      input.value = s.code || '';
+      input.setAttribute('data-auto', s.code || '');
+    }
+
+    hint.textContent = s.code
+      ? 'Filled in from ' + s.name + '. Change it only if this ticket is about a different item.'
+      : 'No code is recorded for ' + s.name + ' yet — add one on the Reference data tab, or type it here.';
+    input.placeholder = s.code || 'e.g. CA-1';
+    validateId();
+  }
+
+  function validateId() {
+    var input = $('#t-system-id');
+    var no = $('#t-system').value;
+    var out = $('#t-system-id-warn');
+    if (!no || !input.value.trim()) { out.hidden = true; input.classList.remove('is-warn'); return; }
+    var res = Store.validateSystemId(no, input.value);
+    input.classList.toggle('is-warn', !res.ok);
+    out.hidden = res.ok;
+    out.textContent = res.ok ? '' : 'The code recorded for this system is ' + res.expected +
+      '. What you have typed will still be saved.';
+  }
+
+  function readForm() {
+    return {
+      systemNo:      $('#t-system').value,
+      systemId:      $('#t-system-id').value,
+      businessUnits: $$('#t-units input[name="bu"]:checked').map(function (i) { return Number(i.value); }),
+      answerCode:    $('#t-answer').value,
+      priority:      $('#t-priority').value,
+      status:        $('#t-status').value,
+      channel:       $('#t-channel').value,
+      summary:       $('#t-summary').value,
+      reportedBy:    $('#t-reported').value,
+      loggedBy:      $('#t-agent').value,
+      loggedAt:      $('#t-when').value ? new Date($('#t-when').value).toISOString() : undefined
+    };
+  }
+
+  function writeForm(t) {
+    t = t || {};
+    $('#t-system').value = t.systemNo || '';
+    $('#t-system-id').value = t.systemId || '';
+    $$('#t-units input[name="bu"]').forEach(function (i) {
+      i.checked = (t.businessUnits || []).indexOf(Number(i.value)) !== -1;
+    });
+    $('#t-answer').value = t.answerCode || '';
+    $('#t-priority').value = t.priority || 'P3';
+    $('#t-status').value = t.status || 'Open';
+    $('#t-channel').value = t.channel || 'Phone';
+    $('#t-summary').value = t.summary || '';
+    $('#t-reported').value = t.reportedBy || '';
+    $('#t-agent').value = t.loggedBy || Store.getPrefs().lastAgent || '';
+    $('#t-when').value = localInput(t.loggedAt || new Date().toISOString());
+    systemHint();
+  }
+
+  function localInput(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) d = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function formErrors(data) {
+    var errs = [];
+    if (!data.systemNo) errs.push('Choose the system.');
+    var sys = data.systemNo ? Store.systemByNo(data.systemNo) : null;
+    if (sys && sys.code && !String(data.systemId).trim()) errs.push('Enter the configuration item code.');
+    if (!data.businessUnits.length) errs.push('Tick at least one impacted business unit.');
+    if (!/^\d{4}$/.test(String(data.answerCode).trim())) errs.push('Enter the four digit answer code.');
+    return errs;
+  }
+
+  function startEdit(id) {
+    var t = Store.byId(id);
+    if (!t) return;
+    editingId = id;
+    writeForm(t);
+    $('#form-mode').textContent = 'Editing ' + t.ref;
+    $('#t-submit').textContent = 'Save changes';
+    $('#t-delete').hidden = false;
+    $('#t-thumb-wrap').hidden = !t.thumb;
+    if (t.thumb) $('#t-thumb').src = t.thumb;
+    showTab('log');
+  }
+
+  function resetForm() {
+    editingId = null;
+    writeForm(null);
+    $('#form-mode').textContent = 'New ticket — next reference ' + Store.nextRef();
+    $('#t-submit').textContent = 'Log ticket';
+    $('#t-delete').hidden = true;
+    $('#t-thumb-wrap').hidden = true;
+    $('#t-errors').hidden = true;
+  }
+
+  function submitForm(e) {
+    e.preventDefault();
+    var data = readForm();
+    var errs = formErrors(data);
+    var box = $('#t-errors');
+    if (errs.length) {
+      box.hidden = false;
+      box.innerHTML = '<ul>' + errs.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    box.hidden = true;
+    if (data.loggedBy) Store.setPref('lastAgent', data.loggedBy);
+
+    if (editingId) {
+      var t = Store.updateTicket(editingId, data);
+      toast('Saved ' + t.ref);
+    } else {
+      var added = Store.addTicket(data);
+      toast('Logged ' + added.ref + ' against ' + added.systemName);
+    }
+    resetForm();
+    Dash.render();
+    showTab('dashboard');
+  }
+
+  /* ================= photo capture ================= */
+
+  function setCaptureStatus(html, busy) {
+    var node = $('#cap-status');
+    node.innerHTML = html;
+    node.classList.toggle('is-busy', !!busy);
+  }
+
+  function handleFiles(files) {
+    var images = Array.prototype.slice.call(files).filter(function (f) { return /^image\//.test(f.type); });
+    if (!images.length) { toast('Those files are not images.', 'warning'); return; }
+    if (!OCR.available()) {
+      setCaptureStatus('Text recognition did not load — check that the <code>vendor/tesseract</code> folder ' +
+        'was copied alongside this page. You can still log the ticket by hand on the <b>Log a ticket</b> tab.', false);
+      return;
+    }
+    processQueue(images, 0);
+  }
+
+  function processQueue(images, i) {
+    if (i >= images.length) {
+      setCaptureStatus('Read ' + images.length + ' photo' + (images.length === 1 ? '' : 's') + '.', false);
+      return;
+    }
+    setCaptureStatus('Reading photo ' + (i + 1) + ' of ' + images.length + '… <span class="bar"><i style="width:2%"></i></span>', true);
+    OCR.read(images[i], function (status, progress) {
+      var pct = Math.round(progress * 100);
+      setCaptureStatus('Reading photo ' + (i + 1) + ' of ' + images.length + ' — ' + esc(status) +
+        ' <span class="bar"><i style="width:' + Math.max(2, pct) + '%"></i></span>', true);
+    }).then(function (res) {
+      var parsed = OCR.parse(res.text, Store.getConfig());
+      var item = {
+        id: 'c_' + Date.now() + '_' + i,
+        parsed: parsed, raw: res.text, thumb: res.thumb,
+        fileName: res.fileName, ocrConfidence: Math.round(res.confidence)
+      };
+      queue.push(item);
+      renderQueue();
+      if (Store.getPrefs().autoAdd && !parsed.missing.length && !parsed.notes.length) {
+        commit(item.id, true);
+      }
+      processQueue(images, i + 1);
+    }).catch(function (err) {
+      console.error(err);
+      setCaptureStatus('Could not read photo ' + (i + 1) + ': ' + esc(err.message), false);
+      processQueue(images, i + 1);
+    });
+  }
+
+  function renderQueue() {
+    var host = $('#cap-queue');
+    $('#cap-queue-count').textContent = queue.length
+      ? queue.length + ' photo' + (queue.length === 1 ? '' : 's') + ' waiting to be confirmed'
+      : '';
+    if (!queue.length) {
+      host.innerHTML = '<p class="viz-empty">Nothing waiting. Photos that read cleanly are added to the dashboard ' +
+        'straight away; anything doubtful stops here for a quick check.</p>';
+      return;
+    }
+    host.innerHTML = queue.map(function (item) { return card(item); }).join('');
+
+    $$('#cap-queue .cap-card').forEach(function (node) {
+      var id = node.getAttribute('data-id');
+      $('.js-commit', node).addEventListener('click', function () { commit(id, false); });
+      $('.js-edit', node).addEventListener('click', function () { editFromCapture(id); });
+      $('.js-drop', node).addEventListener('click', function () { drop(id); });
+      var raw = $('.js-raw', node);
+      if (raw) raw.addEventListener('click', function () {
+        var pre = $('.cap-raw', node);
+        pre.hidden = !pre.hidden;
+        raw.textContent = pre.hidden ? 'Show what was read' : 'Hide what was read';
+      });
+    });
+  }
+
+  function card(item) {
+    var f = item.parsed.fields, ev = item.parsed.evidence;
+    var cfg = Store.getConfig();
+    var ok = !item.parsed.missing.length;
+
+    function row(label, value, field) {
+      var found = value !== undefined && value !== '' && !(Array.isArray(value) && !value.length);
+      return '<div class="cap-row' + (found ? '' : ' is-missing') + '">' +
+        '<span class="cap-key">' + esc(label) + '</span>' +
+        '<span class="cap-val">' + (found ? esc(value) : 'not found') + '</span>' +
+        '<span class="cap-how">' + esc(found ? (ev[field] || '') : 'type it in') + '</span></div>';
+    }
+
+    var sys = f.systemNo ? Store.systemByNo(f.systemNo) : null;
+    var ans = f.answerCode ? Store.answerByCode(f.answerCode) : null;
+
+    return '<article class="cap-card" data-id="' + esc(item.id) + '">' +
+      '<header class="cap-head">' +
+        '<span class="pill ' + (ok ? 'tone-good' : 'tone-warning') + '">' + item.parsed.confidence + '% of the key fields</span>' +
+        '<span class="cap-file">' + esc(item.fileName) + '</span>' +
+        '<span class="cap-conf">OCR confidence ' + item.ocrConfidence + '%</span>' +
+      '</header>' +
+      '<div class="cap-body">' +
+        (item.thumb ? '<img class="cap-thumb" src="' + item.thumb + '" alt="Photograph of the ticket">' : '') +
+        '<div class="cap-fields">' +
+          row('System', sys ? sys.no + '. ' + sys.name : f.systemNo, 'systemNo') +
+          row('System id', f.systemId, 'systemId') +
+          row('Business units', (f.businessUnits || []).map(function (u) {
+            return u + ' ' + Store.unitShort(u);
+          }).join(', '), 'businessUnits') +
+          row('Answer code', f.answerCode ? f.answerCode + (ans ? ' — ' + ans.label : ' (not in the code list)') : '', 'answerCode') +
+          (f.priority ? row('Priority', f.priority, 'priority') : '') +
+          (f.summary ? row('Summary', f.summary, 'summary') : '') +
+        '</div>' +
+      '</div>' +
+      (item.parsed.notes.length
+        ? '<ul class="cap-notes">' + item.parsed.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
+        : '') +
+      '<footer class="cap-foot">' +
+        '<button type="button" class="btn primary js-commit"' + (ok ? '' : ' disabled title="Fill the missing fields first"') + '>Add to dashboard</button>' +
+        '<button type="button" class="btn js-edit">' + (ok ? 'Check and edit' : 'Complete it by hand') + '</button>' +
+        '<button type="button" class="btn ghost js-drop">Discard</button>' +
+        '<button type="button" class="link js-raw">Show what was read</button>' +
+      '</footer>' +
+      '<pre class="cap-raw" hidden>' + esc(item.raw || '(nothing legible)') + '</pre>' +
+      '</article>';
+  }
+
+  function itemById(id) { return queue.filter(function (q) { return q.id === id; })[0]; }
+
+  function toTicket(item) {
+    var f = item.parsed.fields;
+    return {
+      systemNo: f.systemNo, systemId: f.systemId || '',
+      businessUnits: f.businessUnits || [], answerCode: f.answerCode || '',
+      priority: f.priority || 'P3', status: f.status || 'Open',
+      channel: 'Photo capture', summary: f.summary || '',
+      reportedBy: f.reportedBy || '', loggedBy: f.loggedBy || Store.getPrefs().lastAgent || '',
+      loggedAt: f.loggedAt || new Date().toISOString(),
+      source: 'photo', thumb: item.thumb,
+      ocr: { confidence: item.ocrConfidence, parsed: item.parsed.confidence, file: item.fileName }
+    };
+  }
+
+  function commit(id, silentAuto) {
+    var item = itemById(id);
+    if (!item) return;
+    if (item.parsed.missing.length) { editFromCapture(id); return; }
+    var t = Store.addTicket(toTicket(item));
+    drop(id);
+    Dash.render();
+    toast((silentAuto ? 'Auto-added ' : 'Added ') + t.ref + ' from the photo');
+  }
+
+  function editFromCapture(id) {
+    var item = itemById(id);
+    if (!item) return;
+    editingId = null;
+    writeForm(toTicket(item));
+    $('#form-mode').textContent = 'From a photo — check the fields, then log it';
+    $('#t-submit').textContent = 'Log ticket';
+    $('#t-delete').hidden = true;
+    $('#t-thumb-wrap').hidden = !item.thumb;
+    if (item.thumb) $('#t-thumb').src = item.thumb;
+    drop(id);
+    showTab('log');
+  }
+
+  function drop(id) {
+    queue = queue.filter(function (q) { return q.id !== id; });
+    renderQueue();
+  }
+
+  function wireCapture() {
+    ['#cap-input', '#cap-file'].forEach(function (sel) {
+      var input = $(sel);
+      if (!input) return;
+      input.addEventListener('change', function () { handleFiles(input.files); input.value = ''; });
+    });
+
+    var zone = $('#cap-zone');
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('is-over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove('is-over'); });
+    });
+    zone.addEventListener('drop', function (e) { handleFiles(e.dataTransfer.files); });
+
+    document.addEventListener('paste', function (e) {
+      if ($('.tab-panel[data-tab="capture"]').hidden) return;
+      var items = (e.clipboardData || {}).items || [];
+      var files = [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file') { var f = items[i].getAsFile(); if (f) files.push(f); }
+      }
+      if (files.length) handleFiles(files);
+    });
+
+    var auto = $('#cap-auto');
+    auto.checked = Store.getPrefs().autoAdd !== false;
+    auto.addEventListener('change', function () { Store.setPref('autoAdd', auto.checked); });
+
+    $('#cap-clear').addEventListener('click', function () { queue = []; renderQueue(); });
+  }
+
+  /* ================= reference data ================= */
+
+  function renderReference() {
+    var cfg = Store.getConfig();
+
+    $('#ref-systems').innerHTML =
+      '<table class="grid editable"><thead><tr><th>No</th><th>System name</th>' +
+      '<th>Configuration item code</th></tr></thead><tbody>' +
+      cfg.systems.map(function (s, i) {
+        return '<tr data-i="' + i + '">' +
+          '<td class="num">' + s.no + '</td>' +
+          '<td><input data-k="name" value="' + esc(s.name) + '"></td>' +
+          '<td><input data-k="code" class="mono short" placeholder="none recorded" value="' +
+            esc(s.code || '') + '"></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $('#ref-units').innerHTML =
+      '<table class="grid editable"><thead><tr><th>No</th><th>Business unit</th><th>Short name</th></tr></thead><tbody>' +
+      cfg.businessUnits.map(function (u, i) {
+        return '<tr data-i="' + i + '">' +
+          '<td class="num">' + u.no + '</td>' +
+          '<td><input data-k="name" value="' + esc(u.name) + '"></td>' +
+          '<td><input data-k="short" value="' + esc(u.short || '') + '"></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $('#ref-answers').innerHTML =
+      '<table class="grid editable"><thead><tr><th>Code</th><th>Meaning</th><th>Category</th><th></th></tr></thead><tbody>' +
+      cfg.answerCodes.map(function (a, i) {
+        return '<tr data-i="' + i + '">' +
+          '<td><input data-k="code" class="mono short" maxlength="4" inputmode="numeric" value="' + esc(a.code) + '"></td>' +
+          '<td><input data-k="label" value="' + esc(a.label) + '"></td>' +
+          '<td><input data-k="category" value="' + esc(a.category || '') + '"></td>' +
+          '<td><button type="button" class="btn ghost tiny js-del-answer">Remove</button></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $$('#ref-answers .js-del-answer').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = Number(btn.closest('tr').getAttribute('data-i'));
+        readReference();
+        Store.getConfig().answerCodes.splice(i, 1);
+        Store.saveConfig();
+        renderReference();
+        refreshEverything();
+      });
+    });
+  }
+
+  function readReference() {
+    var cfg = Store.getConfig();
+    $$('#ref-systems tbody tr').forEach(function (tr) {
+      var s = cfg.systems[Number(tr.getAttribute('data-i'))];
+      $$('input', tr).forEach(function (inp) { s[inp.getAttribute('data-k')] = inp.value.trim(); });
+    });
+    $$('#ref-units tbody tr').forEach(function (tr) {
+      var u = cfg.businessUnits[Number(tr.getAttribute('data-i'))];
+      $$('input', tr).forEach(function (inp) { u[inp.getAttribute('data-k')] = inp.value.trim(); });
+    });
+    $$('#ref-answers tbody tr').forEach(function (tr) {
+      var a = cfg.answerCodes[Number(tr.getAttribute('data-i'))];
+      $$('input', tr).forEach(function (inp) { a[inp.getAttribute('data-k')] = inp.value.trim(); });
+    });
+  }
+
+  function saveReference() {
+    readReference();
+    var cfg = Store.getConfig();
+    var bad = cfg.answerCodes.filter(function (a) { return !/^\d{4}$/.test(a.code); });
+    if (bad.length) { toast('Answer codes must be four digits — check ' + bad[0].label, 'warning'); return; }
+
+    var seen = {}, clash = null;
+    cfg.systems.forEach(function (s) {
+      var k = Store.normCode(s.code);
+      if (!k) return;
+      if (seen[k]) clash = seen[k] + ' and ' + s.name + ' both use ' + s.code;
+      seen[k] = s.name;
+    });
+    if (clash) { toast('Two systems cannot share a code — ' + clash, 'warning'); return; }
+    Store.saveConfig();
+    refreshEverything();
+    toast('Reference data saved');
+  }
+
+  function refreshEverything() {
+    buildFormOptions();
+    Dash.buildFilterControls();
+    Dash.render();
+  }
+
+  /* ================= data in / out ================= */
+
+  /* A plain download link works when the page is opened as a file or
+     served normally. In a shared preview the host mediates saving
+     instead, so ask it and fall back only when it is not there. */
+  function download(name, text, type, done) {
+    if (window.claude && typeof window.claude.use === 'function') {
+      window.claude.use('downloads').then(function (downloads) {
+        if (!downloads) return linkDownload(name, text, type, done);
+        return downloads.save({ filename: name, data: text }).then(function () {
+          if (done) toast(done);
+        }).catch(function (err) {
+          var code = err && err.code;
+          if (code === 'declined') return;
+          toast(code === 'rate_limited'
+            ? 'A save is already waiting — finish that one first.'
+            : 'That file could not be saved here. ' +
+              'The copy in the repository saves it straight to your downloads.', 'warning');
+        });
+      }).catch(function () { linkDownload(name, text, type, done); });
+      return;
+    }
+    linkDownload(name, text, type, done);
+  }
+
+  function linkDownload(name, text, type, done) {
+    var blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    if (done) toast(done);
+  }
+
+  function wireData() {
+    $('#d-csv').addEventListener('click', function () {
+      var list = Dash.filtered();
+      download('service-desk-tickets-' + new Date().toISOString().slice(0, 10) + '.csv',
+        Store.toCSV(list), 'text/csv;charset=utf-8',
+        'Exported ' + list.length + ' ticket' + (list.length === 1 ? '' : 's') + ' as CSV');
+    });
+
+    $('#d-json').addEventListener('click', function () {
+      download('service-desk-backup-' + new Date().toISOString().slice(0, 10) + '.json',
+        JSON.stringify(Store.exportBundle(), null, 2), 'application/json',
+        'Exported tickets and reference data');
+    });
+
+    $('#d-import').addEventListener('change', function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var added = Store.importBundle(JSON.parse(reader.result), $('#d-import-mode').value);
+          refreshEverything();
+          renderReference();
+          toast('Imported ' + added + ' tickets');
+        } catch (err) {
+          toast('Import failed: ' + err.message, 'warning');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    $('#d-demo').addEventListener('click', function () {
+      if (Store.all().length && !confirm('Add ' + 140 + ' sample tickets on top of the ' +
+        Store.all().length + ' already logged?')) return;
+      Store.addMany(demoTickets(140));
+      refreshEverything();
+      toast('Added sample tickets — clear them from this tab when you are done');
+    });
+
+    $('#d-clear').addEventListener('click', function () {
+      if (!confirm('Delete every ticket? Reference data is kept. This cannot be undone.')) return;
+      Store.clearTickets();
+      Dash.render();
+      toast('All tickets deleted');
+    });
+
+    $('#d-reset-ref').addEventListener('click', function () {
+      if (!confirm('Restore the reference data that ships with the app? Tickets are kept.')) return;
+      Store.resetConfig();
+      renderReference();
+      refreshEverything();
+      toast('Reference data restored');
+    });
+  }
+
+  /* Weighted sample data so the charts show a realistic shape. */
+  function demoTickets(n) {
+    var cfg = Store.getConfig();
+    var out = [];
+    var sysWeights = cfg.systems.map(function (s, i) { return i < 5 ? 6 : i < 11 ? 3 : 1; });
+    var pick = function (arr, weights) {
+      var total = weights.reduce(function (a, b) { return a + b; }, 0);
+      var r = Math.random() * total;
+      for (var i = 0; i < arr.length; i++) { r -= weights[i]; if (r <= 0) return arr[i]; }
+      return arr[arr.length - 1];
+    };
+    var faults = [
+      'User cannot log in after the overnight release',
+      'Report times out when run for the whole region',
+      'Interface file rejected — missing header record',
+      'Mobile app will not sync completed jobs',
+      'Duplicate invoices raised against one work order',
+      'Telemetry values frozen since 02:00',
+      'Search returns no results for valid asset numbers',
+      'Printing to the depot queue fails silently',
+      'Scheduled batch did not run overnight',
+      'Screen locks up when attaching a photo'
+    ];
+    for (var i = 0; i < n; i++) {
+      var sys = pick(cfg.systems, sysWeights);
+      var nUnits = Math.random() < 0.55 ? 1 : Math.random() < 0.85 ? 2 : 3;
+      var units = [];
+      while (units.length < nUnits) {
+        var u = cfg.businessUnits[Math.floor(Math.random() * cfg.businessUnits.length)].no;
+        if (units.indexOf(u) === -1) units.push(u);
+      }
+      var ans = cfg.answerCodes[Math.floor(Math.random() * cfg.answerCodes.length)];
+      var daysBack = Math.floor(Math.pow(Math.random(), 1.5) * 45);
+      var when = new Date(Date.now() - daysBack * 86400000 -
+        Math.floor(Math.random() * 9) * 3600000);
+      var r = Math.random();
+      out.push({
+        systemNo: sys.no,
+        systemId: sys.code || '',
+        businessUnits: units.sort(function (a, b) { return a - b; }),
+        answerCode: ans.code,
+        priority: r < 0.05 ? 'P1' : r < 0.25 ? 'P2' : r < 0.8 ? 'P3' : 'P4',
+        status: daysBack > 5 ? (Math.random() < 0.85 ? 'Closed' : 'Resolved')
+                             : ['Open', 'In progress', 'Pending customer', 'Resolved'][Math.floor(Math.random() * 4)],
+        channel: cfg.channels[Math.floor(Math.random() * (cfg.channels.length - 1))],
+        summary: faults[Math.floor(Math.random() * faults.length)],
+        loggedBy: ['A. Mensah', 'J. Okafor', 'S. Patel', 'R. Duarte'][Math.floor(Math.random() * 4)],
+        loggedAt: when.toISOString(),
+        source: Math.random() < 0.2 ? 'photo' : 'manual'
+      });
+    }
+    return out.sort(function (a, b) { return a.loggedAt < b.loggedAt ? -1 : 1; });
+  }
+
+  /* ================= single file / shared preview ================= */
+
+  /* The build script sets window.SDP_SINGLE_FILE on the one-file copy.
+     There is no folder beside it, so seed something to look at and be
+     straight about what photo capture can and cannot do. */
+  function singleFileSetup() {
+    if (!Store.all().length) {
+      Store.addMany(demoTickets(140));
+      var banner = document.createElement('div');
+      banner.className = 'banner';
+      banner.innerHTML = '<span><b>Sample tickets.</b> These 140 are invented, so the dashboard has ' +
+        'something to show. Delete them on the <b>Data</b> tab, then log your own.</span>' +
+        '<button type="button" class="btn ghost tiny">Hide</button>';
+      banner.querySelector('button').addEventListener('click', function () { banner.remove(); });
+      document.querySelector('.topbar').insertAdjacentElement('afterend', banner);
+    }
+
+    var note = document.createElement('p');
+    note.className = 'field-hint';
+    note.style.marginTop = '12px';
+    note.innerHTML = '<b>About this copy.</b> Reading a photograph needs the recognition engine, ' +
+      'which is roughly 10&nbsp;MB of separate files and cannot travel inside a single page. ' +
+      'This copy fetches it over the internet, so photo capture works when you are online and ' +
+      'nothing is blocking it — and not at all in a shared preview, where fetching it is refused. ' +
+      'The full version in the repository ships the engine alongside the page and reads photos ' +
+      'with no network at all. Everything else here works either way.';
+    var status = $('#cap-status');
+    status.parentNode.insertBefore(note, status.nextSibling);
+  }
+
+  /* ================= boot ================= */
+
+  function boot() {
+    Store.load();
+    if (window.SDP_SINGLE_FILE) singleFileSetup();
+    applyTheme(Store.getPrefs().theme || 'system');
+
+    buildFormOptions();
+    Dash.init({ onEdit: startEdit });
+    resetForm();
+    renderReference();
+    renderQueue();
+
+    $$('.tab-btn').forEach(function (b) {
+      b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+    });
+
+    $('#ticket-form').addEventListener('submit', submitForm);
+    $('#t-reset').addEventListener('click', function () { resetForm(); toast('Form cleared'); });
+    $('#t-delete').addEventListener('click', function () {
+      if (!editingId || !confirm('Delete this ticket?')) return;
+      Store.deleteTicket(editingId);
+      resetForm();
+      Dash.render();
+      toast('Ticket deleted');
+      showTab('dashboard');
+    });
+    $('#t-system').addEventListener('change', systemHint);
+    $('#t-system-id').addEventListener('input', validateId);
+    $('#theme-btn').addEventListener('click', cycleTheme);
+    $('#ref-save').addEventListener('click', saveReference);
+    $('#ref-add-answer').addEventListener('click', function () {
+      readReference();
+      Store.getConfig().answerCodes.push({ code: '0000', label: 'New answer code', category: 'Other' });
+      Store.saveConfig();
+      renderReference();
+      refreshEverything();
+    });
+
+    wireCapture();
+    wireData();
+
+    Store.on(function (what, detail) {
+      if (what === 'storage-error') {
+        toast('Browser storage is full — export a backup and clear old tickets.', 'warning');
+      }
+    });
+
+    var initial = location.hash.slice(1);
+    showTab(['dashboard', 'log', 'capture', 'reference', 'data'].indexOf(initial) !== -1 ? initial : 'dashboard');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+</body>
+</html>
