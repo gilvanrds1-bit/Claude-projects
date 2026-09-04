@@ -1,0 +1,678 @@
+/* ------------------------------------------------------------------
+   App — tabs, the ticket form, the photo capture queue, reference
+   data editing and import/export.
+   ------------------------------------------------------------------ */
+
+(function () {
+  var Store = window.Store, Dash = window.Dashboard, OCR = window.OCR;
+  var editingId = null;
+  var queue = [];          /* capture results awaiting confirmation */
+
+  function $(s, root) { return (root || document).querySelector(s); }
+  function $$(s, root) { return Array.prototype.slice.call((root || document).querySelectorAll(s)); }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function toast(message, tone) {
+    var host = $('#toasts');
+    var node = document.createElement('div');
+    node.className = 'toast' + (tone ? ' tone-' + tone : '');
+    node.textContent = message;
+    host.appendChild(node);
+    setTimeout(function () { node.classList.add('is-out'); }, 3600);
+    setTimeout(function () { node.remove(); }, 4200);
+  }
+
+  /* ================= tabs ================= */
+
+  function showTab(name) {
+    $$('.tab-panel').forEach(function (p) { p.hidden = p.getAttribute('data-tab') !== name; });
+    $$('.tab-btn').forEach(function (b) {
+      var on = b.getAttribute('data-tab') === name;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (name === 'dashboard') Dash.render();
+    if (location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ================= theme ================= */
+
+  function applyTheme(mode) {
+    if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', mode);
+    Store.setPref('theme', mode);
+    var btn = $('#theme-btn');
+    if (btn) btn.textContent = mode === 'dark' ? 'Dark' : mode === 'light' ? 'Light' : 'Auto';
+    if (!$('.tab-panel[data-tab="dashboard"]').hidden) Dash.render();
+  }
+
+  function cycleTheme() {
+    var order = ['system', 'light', 'dark'];
+    var next = order[(order.indexOf(Store.getPrefs().theme || 'system') + 1) % order.length];
+    applyTheme(next);
+  }
+
+  /* ================= ticket form ================= */
+
+  function buildFormOptions() {
+    var cfg = Store.getConfig();
+
+    $('#t-system').innerHTML = '<option value="">Choose a system…</option>' +
+      cfg.systems.map(function (s) {
+        return '<option value="' + s.no + '">' + esc(s.no + '. ' + s.name) + '</option>';
+      }).join('');
+
+    $('#t-units').innerHTML = cfg.businessUnits.map(function (u) {
+      return '<label class="check"><input type="checkbox" name="bu" value="' + u.no + '"> ' +
+        '<span><b>' + u.no + '</b> ' + esc(u.name) + '</span></label>';
+    }).join('');
+
+    var byCat = {};
+    cfg.answerCodes.forEach(function (a) { (byCat[a.category] = byCat[a.category] || []).push(a); });
+    $('#t-answer').innerHTML = '<option value="">Choose an answer code…</option>' +
+      Object.keys(byCat).map(function (cat) {
+        return '<optgroup label="' + esc(cat) + '">' + byCat[cat].map(function (a) {
+          return '<option value="' + esc(a.code) + '">' + esc(a.code + ' — ' + a.label) + '</option>';
+        }).join('') + '</optgroup>';
+      }).join('');
+
+    $('#t-priority').innerHTML = cfg.priorities.map(function (p) {
+      return '<option value="' + esc(p) + '"' + (p === 'P3' ? ' selected' : '') + '>' + esc(p) + '</option>';
+    }).join('');
+    $('#t-status').innerHTML = cfg.statuses.map(function (s) {
+      return '<option value="' + esc(s) + '">' + esc(s) + '</option>';
+    }).join('');
+    $('#t-channel').innerHTML = cfg.channels.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
+    }).join('');
+  }
+
+  function systemHint() {
+    var no = $('#t-system').value;
+    var s = no ? Store.systemByNo(no) : null;
+    var hint = $('#t-system-id-hint');
+    if (!s) { hint.textContent = 'Pick a system first — every system numbers its ids differently.'; return; }
+    hint.textContent = 'System ' + s.no + ' ids look like ' + (s.idExample || s.idPrefix + '…') + '.';
+    var input = $('#t-system-id');
+    if (!input.value && s.idPrefix) input.placeholder = s.idExample || s.idPrefix;
+    validateId();
+  }
+
+  function validateId() {
+    var input = $('#t-system-id');
+    var no = $('#t-system').value;
+    var out = $('#t-system-id-warn');
+    if (!no || !input.value.trim()) { out.hidden = true; input.classList.remove('is-warn'); return; }
+    var res = Store.validateSystemId(no, input.value);
+    input.classList.toggle('is-warn', !res.ok);
+    out.hidden = res.ok;
+    out.textContent = res.ok ? '' : 'That does not match the usual shape for this system (e.g. ' + res.expected + '). It will still be saved.';
+  }
+
+  function readForm() {
+    return {
+      systemNo:      $('#t-system').value,
+      systemId:      $('#t-system-id').value,
+      businessUnits: $$('#t-units input[name="bu"]:checked').map(function (i) { return Number(i.value); }),
+      answerCode:    $('#t-answer').value,
+      priority:      $('#t-priority').value,
+      status:        $('#t-status').value,
+      channel:       $('#t-channel').value,
+      summary:       $('#t-summary').value,
+      reportedBy:    $('#t-reported').value,
+      loggedBy:      $('#t-agent').value,
+      loggedAt:      $('#t-when').value ? new Date($('#t-when').value).toISOString() : undefined
+    };
+  }
+
+  function writeForm(t) {
+    t = t || {};
+    $('#t-system').value = t.systemNo || '';
+    $('#t-system-id').value = t.systemId || '';
+    $$('#t-units input[name="bu"]').forEach(function (i) {
+      i.checked = (t.businessUnits || []).indexOf(Number(i.value)) !== -1;
+    });
+    $('#t-answer').value = t.answerCode || '';
+    $('#t-priority').value = t.priority || 'P3';
+    $('#t-status').value = t.status || 'Open';
+    $('#t-channel').value = t.channel || 'Phone';
+    $('#t-summary').value = t.summary || '';
+    $('#t-reported').value = t.reportedBy || '';
+    $('#t-agent').value = t.loggedBy || Store.getPrefs().lastAgent || '';
+    $('#t-when').value = localInput(t.loggedAt || new Date().toISOString());
+    systemHint();
+  }
+
+  function localInput(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) d = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function formErrors(data) {
+    var errs = [];
+    if (!data.systemNo) errs.push('Choose the system.');
+    if (!String(data.systemId).trim()) errs.push('Enter the system id.');
+    if (!data.businessUnits.length) errs.push('Tick at least one impacted business unit.');
+    if (!/^\d{4}$/.test(String(data.answerCode).trim())) errs.push('Enter the four digit answer code.');
+    return errs;
+  }
+
+  function startEdit(id) {
+    var t = Store.byId(id);
+    if (!t) return;
+    editingId = id;
+    writeForm(t);
+    $('#form-mode').textContent = 'Editing ' + t.ref;
+    $('#t-submit').textContent = 'Save changes';
+    $('#t-delete').hidden = false;
+    $('#t-thumb-wrap').hidden = !t.thumb;
+    if (t.thumb) $('#t-thumb').src = t.thumb;
+    showTab('log');
+  }
+
+  function resetForm() {
+    editingId = null;
+    writeForm(null);
+    $('#form-mode').textContent = 'New ticket — next reference ' + Store.nextRef();
+    $('#t-submit').textContent = 'Log ticket';
+    $('#t-delete').hidden = true;
+    $('#t-thumb-wrap').hidden = true;
+    $('#t-errors').hidden = true;
+  }
+
+  function submitForm(e) {
+    e.preventDefault();
+    var data = readForm();
+    var errs = formErrors(data);
+    var box = $('#t-errors');
+    if (errs.length) {
+      box.hidden = false;
+      box.innerHTML = '<ul>' + errs.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    box.hidden = true;
+    if (data.loggedBy) Store.setPref('lastAgent', data.loggedBy);
+
+    if (editingId) {
+      var t = Store.updateTicket(editingId, data);
+      toast('Saved ' + t.ref);
+    } else {
+      var added = Store.addTicket(data);
+      toast('Logged ' + added.ref + ' against ' + added.systemName);
+    }
+    resetForm();
+    Dash.render();
+    showTab('dashboard');
+  }
+
+  /* ================= photo capture ================= */
+
+  function setCaptureStatus(html, busy) {
+    var node = $('#cap-status');
+    node.innerHTML = html;
+    node.classList.toggle('is-busy', !!busy);
+  }
+
+  function handleFiles(files) {
+    var images = Array.prototype.slice.call(files).filter(function (f) { return /^image\//.test(f.type); });
+    if (!images.length) { toast('Those files are not images.', 'warning'); return; }
+    if (!OCR.available()) {
+      setCaptureStatus('Text recognition did not load — check that the <code>vendor/tesseract</code> folder ' +
+        'was copied alongside this page. You can still log the ticket by hand on the <b>Log a ticket</b> tab.', false);
+      return;
+    }
+    processQueue(images, 0);
+  }
+
+  function processQueue(images, i) {
+    if (i >= images.length) {
+      setCaptureStatus('Read ' + images.length + ' photo' + (images.length === 1 ? '' : 's') + '.', false);
+      return;
+    }
+    setCaptureStatus('Reading photo ' + (i + 1) + ' of ' + images.length + '… <span class="bar"><i style="width:2%"></i></span>', true);
+    OCR.read(images[i], function (status, progress) {
+      var pct = Math.round(progress * 100);
+      setCaptureStatus('Reading photo ' + (i + 1) + ' of ' + images.length + ' — ' + esc(status) +
+        ' <span class="bar"><i style="width:' + Math.max(2, pct) + '%"></i></span>', true);
+    }).then(function (res) {
+      var parsed = OCR.parse(res.text, Store.getConfig());
+      var item = {
+        id: 'c_' + Date.now() + '_' + i,
+        parsed: parsed, raw: res.text, thumb: res.thumb,
+        fileName: res.fileName, ocrConfidence: Math.round(res.confidence)
+      };
+      queue.push(item);
+      renderQueue();
+      if (Store.getPrefs().autoAdd && !parsed.missing.length && !parsed.notes.length) {
+        commit(item.id, true);
+      }
+      processQueue(images, i + 1);
+    }).catch(function (err) {
+      console.error(err);
+      setCaptureStatus('Could not read photo ' + (i + 1) + ': ' + esc(err.message), false);
+      processQueue(images, i + 1);
+    });
+  }
+
+  function renderQueue() {
+    var host = $('#cap-queue');
+    $('#cap-queue-count').textContent = queue.length
+      ? queue.length + ' photo' + (queue.length === 1 ? '' : 's') + ' waiting to be confirmed'
+      : '';
+    if (!queue.length) {
+      host.innerHTML = '<p class="viz-empty">Nothing waiting. Photos that read cleanly are added to the dashboard ' +
+        'straight away; anything doubtful stops here for a quick check.</p>';
+      return;
+    }
+    host.innerHTML = queue.map(function (item) { return card(item); }).join('');
+
+    $$('#cap-queue .cap-card').forEach(function (node) {
+      var id = node.getAttribute('data-id');
+      $('.js-commit', node).addEventListener('click', function () { commit(id, false); });
+      $('.js-edit', node).addEventListener('click', function () { editFromCapture(id); });
+      $('.js-drop', node).addEventListener('click', function () { drop(id); });
+      var raw = $('.js-raw', node);
+      if (raw) raw.addEventListener('click', function () {
+        var pre = $('.cap-raw', node);
+        pre.hidden = !pre.hidden;
+        raw.textContent = pre.hidden ? 'Show what was read' : 'Hide what was read';
+      });
+    });
+  }
+
+  function card(item) {
+    var f = item.parsed.fields, ev = item.parsed.evidence;
+    var cfg = Store.getConfig();
+    var ok = !item.parsed.missing.length;
+
+    function row(label, value, field) {
+      var found = value !== undefined && value !== '' && !(Array.isArray(value) && !value.length);
+      return '<div class="cap-row' + (found ? '' : ' is-missing') + '">' +
+        '<span class="cap-key">' + esc(label) + '</span>' +
+        '<span class="cap-val">' + (found ? esc(value) : 'not found') + '</span>' +
+        '<span class="cap-how">' + esc(found ? (ev[field] || '') : 'type it in') + '</span></div>';
+    }
+
+    var sys = f.systemNo ? Store.systemByNo(f.systemNo) : null;
+    var ans = f.answerCode ? Store.answerByCode(f.answerCode) : null;
+
+    return '<article class="cap-card" data-id="' + esc(item.id) + '">' +
+      '<header class="cap-head">' +
+        '<span class="pill ' + (ok ? 'tone-good' : 'tone-warning') + '">' + item.parsed.confidence + '% of the key fields</span>' +
+        '<span class="cap-file">' + esc(item.fileName) + '</span>' +
+        '<span class="cap-conf">OCR confidence ' + item.ocrConfidence + '%</span>' +
+      '</header>' +
+      '<div class="cap-body">' +
+        (item.thumb ? '<img class="cap-thumb" src="' + item.thumb + '" alt="Photograph of the ticket">' : '') +
+        '<div class="cap-fields">' +
+          row('System', sys ? sys.no + '. ' + sys.name : f.systemNo, 'systemNo') +
+          row('System id', f.systemId, 'systemId') +
+          row('Business units', (f.businessUnits || []).map(function (u) {
+            return u + ' ' + Store.unitShort(u);
+          }).join(', '), 'businessUnits') +
+          row('Answer code', f.answerCode ? f.answerCode + (ans ? ' — ' + ans.label : ' (not in the code list)') : '', 'answerCode') +
+          (f.priority ? row('Priority', f.priority, 'priority') : '') +
+          (f.summary ? row('Summary', f.summary, 'summary') : '') +
+        '</div>' +
+      '</div>' +
+      (item.parsed.notes.length
+        ? '<ul class="cap-notes">' + item.parsed.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
+        : '') +
+      '<footer class="cap-foot">' +
+        '<button type="button" class="btn primary js-commit"' + (ok ? '' : ' disabled title="Fill the missing fields first"') + '>Add to dashboard</button>' +
+        '<button type="button" class="btn js-edit">' + (ok ? 'Check and edit' : 'Complete it by hand') + '</button>' +
+        '<button type="button" class="btn ghost js-drop">Discard</button>' +
+        '<button type="button" class="link js-raw">Show what was read</button>' +
+      '</footer>' +
+      '<pre class="cap-raw" hidden>' + esc(item.raw || '(nothing legible)') + '</pre>' +
+      '</article>';
+  }
+
+  function itemById(id) { return queue.filter(function (q) { return q.id === id; })[0]; }
+
+  function toTicket(item) {
+    var f = item.parsed.fields;
+    return {
+      systemNo: f.systemNo, systemId: f.systemId || '',
+      businessUnits: f.businessUnits || [], answerCode: f.answerCode || '',
+      priority: f.priority || 'P3', status: f.status || 'Open',
+      channel: 'Photo capture', summary: f.summary || '',
+      reportedBy: f.reportedBy || '', loggedBy: f.loggedBy || Store.getPrefs().lastAgent || '',
+      loggedAt: f.loggedAt || new Date().toISOString(),
+      source: 'photo', thumb: item.thumb,
+      ocr: { confidence: item.ocrConfidence, parsed: item.parsed.confidence, file: item.fileName }
+    };
+  }
+
+  function commit(id, silentAuto) {
+    var item = itemById(id);
+    if (!item) return;
+    if (item.parsed.missing.length) { editFromCapture(id); return; }
+    var t = Store.addTicket(toTicket(item));
+    drop(id);
+    Dash.render();
+    toast((silentAuto ? 'Auto-added ' : 'Added ') + t.ref + ' from the photo');
+  }
+
+  function editFromCapture(id) {
+    var item = itemById(id);
+    if (!item) return;
+    editingId = null;
+    writeForm(toTicket(item));
+    $('#form-mode').textContent = 'From a photo — check the fields, then log it';
+    $('#t-submit').textContent = 'Log ticket';
+    $('#t-delete').hidden = true;
+    $('#t-thumb-wrap').hidden = !item.thumb;
+    if (item.thumb) $('#t-thumb').src = item.thumb;
+    drop(id);
+    showTab('log');
+  }
+
+  function drop(id) {
+    queue = queue.filter(function (q) { return q.id !== id; });
+    renderQueue();
+  }
+
+  function wireCapture() {
+    ['#cap-input', '#cap-file'].forEach(function (sel) {
+      var input = $(sel);
+      if (!input) return;
+      input.addEventListener('change', function () { handleFiles(input.files); input.value = ''; });
+    });
+
+    var zone = $('#cap-zone');
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('is-over'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove('is-over'); });
+    });
+    zone.addEventListener('drop', function (e) { handleFiles(e.dataTransfer.files); });
+
+    document.addEventListener('paste', function (e) {
+      if ($('.tab-panel[data-tab="capture"]').hidden) return;
+      var items = (e.clipboardData || {}).items || [];
+      var files = [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file') { var f = items[i].getAsFile(); if (f) files.push(f); }
+      }
+      if (files.length) handleFiles(files);
+    });
+
+    var auto = $('#cap-auto');
+    auto.checked = Store.getPrefs().autoAdd !== false;
+    auto.addEventListener('change', function () { Store.setPref('autoAdd', auto.checked); });
+
+    $('#cap-clear').addEventListener('click', function () { queue = []; renderQueue(); });
+  }
+
+  /* ================= reference data ================= */
+
+  function renderReference() {
+    var cfg = Store.getConfig();
+
+    $('#ref-systems').innerHTML =
+      '<table class="grid editable"><thead><tr><th>No</th><th>System name</th><th>Id prefix</th>' +
+      '<th>Id pattern (regex)</th><th>Example id</th></tr></thead><tbody>' +
+      cfg.systems.map(function (s, i) {
+        return '<tr data-i="' + i + '">' +
+          '<td class="num">' + s.no + '</td>' +
+          '<td><input data-k="name" value="' + esc(s.name) + '"></td>' +
+          '<td><input data-k="idPrefix" class="short" value="' + esc(s.idPrefix || '') + '"></td>' +
+          '<td><input data-k="idPattern" class="mono" value="' + esc(s.idPattern || '') + '"></td>' +
+          '<td><input data-k="idExample" class="mono" value="' + esc(s.idExample || '') + '"></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $('#ref-units').innerHTML =
+      '<table class="grid editable"><thead><tr><th>No</th><th>Business unit</th><th>Short name</th></tr></thead><tbody>' +
+      cfg.businessUnits.map(function (u, i) {
+        return '<tr data-i="' + i + '">' +
+          '<td class="num">' + u.no + '</td>' +
+          '<td><input data-k="name" value="' + esc(u.name) + '"></td>' +
+          '<td><input data-k="short" value="' + esc(u.short || '') + '"></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $('#ref-answers').innerHTML =
+      '<table class="grid editable"><thead><tr><th>Code</th><th>Meaning</th><th>Category</th><th></th></tr></thead><tbody>' +
+      cfg.answerCodes.map(function (a, i) {
+        return '<tr data-i="' + i + '">' +
+          '<td><input data-k="code" class="mono short" maxlength="4" inputmode="numeric" value="' + esc(a.code) + '"></td>' +
+          '<td><input data-k="label" value="' + esc(a.label) + '"></td>' +
+          '<td><input data-k="category" value="' + esc(a.category || '') + '"></td>' +
+          '<td><button type="button" class="btn ghost tiny js-del-answer">Remove</button></td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+
+    $$('#ref-answers .js-del-answer').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = Number(btn.closest('tr').getAttribute('data-i'));
+        readReference();
+        Store.getConfig().answerCodes.splice(i, 1);
+        Store.saveConfig();
+        renderReference();
+        refreshEverything();
+      });
+    });
+  }
+
+  function readReference() {
+    var cfg = Store.getConfig();
+    $$('#ref-systems tbody tr').forEach(function (tr) {
+      var s = cfg.systems[Number(tr.getAttribute('data-i'))];
+      $$('input', tr).forEach(function (inp) { s[inp.getAttribute('data-k')] = inp.value.trim(); });
+    });
+    $$('#ref-units tbody tr').forEach(function (tr) {
+      var u = cfg.businessUnits[Number(tr.getAttribute('data-i'))];
+      $$('input', tr).forEach(function (inp) { u[inp.getAttribute('data-k')] = inp.value.trim(); });
+    });
+    $$('#ref-answers tbody tr').forEach(function (tr) {
+      var a = cfg.answerCodes[Number(tr.getAttribute('data-i'))];
+      $$('input', tr).forEach(function (inp) { a[inp.getAttribute('data-k')] = inp.value.trim(); });
+    });
+  }
+
+  function saveReference() {
+    readReference();
+    var cfg = Store.getConfig();
+    var bad = cfg.answerCodes.filter(function (a) { return !/^\d{4}$/.test(a.code); });
+    if (bad.length) { toast('Answer codes must be four digits — check ' + bad[0].label, 'warning'); return; }
+    Store.saveConfig();
+    refreshEverything();
+    toast('Reference data saved');
+  }
+
+  function refreshEverything() {
+    buildFormOptions();
+    Dash.buildFilterControls();
+    Dash.render();
+  }
+
+  /* ================= data in / out ================= */
+
+  function download(name, text, type) {
+    var blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function wireData() {
+    $('#d-csv').addEventListener('click', function () {
+      var list = Dash.filtered();
+      download('service-desk-tickets-' + new Date().toISOString().slice(0, 10) + '.csv',
+        Store.toCSV(list), 'text/csv;charset=utf-8');
+      toast('Exported ' + list.length + ' tickets as CSV');
+    });
+
+    $('#d-json').addEventListener('click', function () {
+      download('service-desk-backup-' + new Date().toISOString().slice(0, 10) + '.json',
+        JSON.stringify(Store.exportBundle(), null, 2), 'application/json');
+      toast('Exported tickets and reference data');
+    });
+
+    $('#d-import').addEventListener('change', function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var added = Store.importBundle(JSON.parse(reader.result), $('#d-import-mode').value);
+          refreshEverything();
+          renderReference();
+          toast('Imported ' + added + ' tickets');
+        } catch (err) {
+          toast('Import failed: ' + err.message, 'warning');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    $('#d-demo').addEventListener('click', function () {
+      if (Store.all().length && !confirm('Add ' + 140 + ' sample tickets on top of the ' +
+        Store.all().length + ' already logged?')) return;
+      Store.addMany(demoTickets(140));
+      refreshEverything();
+      toast('Added sample tickets — clear them from this tab when you are done');
+    });
+
+    $('#d-clear').addEventListener('click', function () {
+      if (!confirm('Delete every ticket? Reference data is kept. This cannot be undone.')) return;
+      Store.clearTickets();
+      Dash.render();
+      toast('All tickets deleted');
+    });
+
+    $('#d-reset-ref').addEventListener('click', function () {
+      if (!confirm('Restore the reference data that ships with the app? Tickets are kept.')) return;
+      Store.resetConfig();
+      renderReference();
+      refreshEverything();
+      toast('Reference data restored');
+    });
+  }
+
+  /* Weighted sample data so the charts show a realistic shape. */
+  function demoTickets(n) {
+    var cfg = Store.getConfig();
+    var out = [];
+    var sysWeights = cfg.systems.map(function (s, i) { return i < 5 ? 6 : i < 11 ? 3 : 1; });
+    var pick = function (arr, weights) {
+      var total = weights.reduce(function (a, b) { return a + b; }, 0);
+      var r = Math.random() * total;
+      for (var i = 0; i < arr.length; i++) { r -= weights[i]; if (r <= 0) return arr[i]; }
+      return arr[arr.length - 1];
+    };
+    var faults = [
+      'User cannot log in after the overnight release',
+      'Report times out when run for the whole region',
+      'Interface file rejected — missing header record',
+      'Mobile app will not sync completed jobs',
+      'Duplicate invoices raised against one work order',
+      'Telemetry values frozen since 02:00',
+      'Search returns no results for valid asset numbers',
+      'Printing to the depot queue fails silently',
+      'Scheduled batch did not run overnight',
+      'Screen locks up when attaching a photo'
+    ];
+    for (var i = 0; i < n; i++) {
+      var sys = pick(cfg.systems, sysWeights);
+      var nUnits = Math.random() < 0.55 ? 1 : Math.random() < 0.85 ? 2 : 3;
+      var units = [];
+      while (units.length < nUnits) {
+        var u = cfg.businessUnits[Math.floor(Math.random() * cfg.businessUnits.length)].no;
+        if (units.indexOf(u) === -1) units.push(u);
+      }
+      var ans = cfg.answerCodes[Math.floor(Math.random() * cfg.answerCodes.length)];
+      var daysBack = Math.floor(Math.pow(Math.random(), 1.5) * 45);
+      var when = new Date(Date.now() - daysBack * 86400000 -
+        Math.floor(Math.random() * 9) * 3600000);
+      var r = Math.random();
+      out.push({
+        systemNo: sys.no,
+        systemId: (sys.idExample || sys.idPrefix + '-1000').replace(/\d+$/, function (d) {
+          return String(Number(d) + Math.floor(Math.random() * 400));
+        }),
+        businessUnits: units.sort(function (a, b) { return a - b; }),
+        answerCode: ans.code,
+        priority: r < 0.05 ? 'P1' : r < 0.25 ? 'P2' : r < 0.8 ? 'P3' : 'P4',
+        status: daysBack > 5 ? (Math.random() < 0.85 ? 'Closed' : 'Resolved')
+                             : ['Open', 'In progress', 'Pending customer', 'Resolved'][Math.floor(Math.random() * 4)],
+        channel: cfg.channels[Math.floor(Math.random() * (cfg.channels.length - 1))],
+        summary: faults[Math.floor(Math.random() * faults.length)],
+        loggedBy: ['A. Mensah', 'J. Okafor', 'S. Patel', 'R. Duarte'][Math.floor(Math.random() * 4)],
+        loggedAt: when.toISOString(),
+        source: Math.random() < 0.2 ? 'photo' : 'manual'
+      });
+    }
+    return out.sort(function (a, b) { return a.loggedAt < b.loggedAt ? -1 : 1; });
+  }
+
+  /* ================= boot ================= */
+
+  function boot() {
+    Store.load();
+    applyTheme(Store.getPrefs().theme || 'system');
+
+    buildFormOptions();
+    Dash.init({ onEdit: startEdit });
+    resetForm();
+    renderReference();
+    renderQueue();
+
+    $$('.tab-btn').forEach(function (b) {
+      b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+    });
+
+    $('#ticket-form').addEventListener('submit', submitForm);
+    $('#t-reset').addEventListener('click', function () { resetForm(); toast('Form cleared'); });
+    $('#t-delete').addEventListener('click', function () {
+      if (!editingId || !confirm('Delete this ticket?')) return;
+      Store.deleteTicket(editingId);
+      resetForm();
+      Dash.render();
+      toast('Ticket deleted');
+      showTab('dashboard');
+    });
+    $('#t-system').addEventListener('change', systemHint);
+    $('#t-system-id').addEventListener('input', validateId);
+    $('#theme-btn').addEventListener('click', cycleTheme);
+    $('#ref-save').addEventListener('click', saveReference);
+    $('#ref-add-answer').addEventListener('click', function () {
+      readReference();
+      Store.getConfig().answerCodes.push({ code: '0000', label: 'New answer code', category: 'Other' });
+      Store.saveConfig();
+      renderReference();
+      refreshEverything();
+    });
+
+    wireCapture();
+    wireData();
+
+    Store.on(function (what, detail) {
+      if (what === 'storage-error') {
+        toast('Browser storage is full — export a backup and clear old tickets.', 'warning');
+      }
+    });
+
+    var initial = location.hash.slice(1);
+    showTab(['dashboard', 'log', 'capture', 'reference', 'data'].indexOf(initial) !== -1 ? initial : 'dashboard');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();

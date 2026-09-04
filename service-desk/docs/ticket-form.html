@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printable ticket form</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #f4f3f0; color: #111;
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .note { max-width: 780px; margin: 24px auto 0; padding: 0 20px; color: #52514e; }
+  .note h1 { font-size: 18px; margin: 0 0 8px; }
+  .note code { background: #e7e5e0; padding: 1px 5px; border-radius: 4px; }
+  .sheet {
+    width: 190mm; min-height: 128mm; margin: 20px auto; padding: 14mm 16mm;
+    background: #fff; border: 1px solid #dedcd6; box-shadow: 0 2px 10px rgba(0,0,0,.06);
+  }
+  .sheet + .sheet { margin-top: 8px; }
+  h2 { margin: 0 0 2mm; font-size: 15pt; letter-spacing: 3px; font-weight: 700; }
+  hr { border: 0; border-top: 2px solid #111; margin: 0 0 6mm; }
+  table { border-collapse: collapse; width: 100%; font-size: 13pt; }
+  td { padding: 2.6mm 0; vertical-align: bottom; }
+  td.k { width: 46mm; white-space: nowrap; }
+  td.v { border-bottom: 1px solid #999; }
+  .wide td.v { width: auto; }
+  .hint { font-size: 8.5pt; color: #7a7871; padding-left: 3mm; white-space: nowrap; }
+  .foot { margin-top: 5mm; font-size: 8.5pt; color: #7a7871; }
+  @media print {
+    body { background: #fff; }
+    .note { display: none; }
+    .sheet { border: 0; box-shadow: none; margin: 0; page-break-after: always; width: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="note">
+  <h1>Printable ticket form</h1>
+  <p>
+    Print this and the reader will find every field first time. The labels are what matter —
+    <code>System No</code>, <code>System ID</code>, <code>Business Units</code> and
+    <code>Answer Code</code> are the four it needs. Write in capitals, keep to the lines,
+    and photograph the whole sheet square on in good light.
+  </p>
+  <p>Two blank forms per printed page. Use your browser's Print command.</p>
+</div>
+
+<script>
+  var sheet = function () {
+    return `<div class="sheet">
+      <h2>SERVICE DESK TICKET</h2>
+      <hr>
+      <table>
+        <tr><td class="k">Ticket No</td><td class="v"></td><td class="hint">office use</td></tr>
+        <tr><td class="k">Date</td><td class="v"></td><td class="hint">dd/mm/yyyy</td></tr>
+        <tr><td class="k">System No</td><td class="v"></td><td class="hint">1&ndash;22</td></tr>
+        <tr><td class="k">System Name</td><td class="v"></td><td class="hint">&nbsp;</td></tr>
+        <tr><td class="k">System ID</td><td class="v"></td><td class="hint">e.g. FS-104233</td></tr>
+        <tr><td class="k">Business Units</td><td class="v"></td><td class="hint">1&ndash;10, comma separated</td></tr>
+        <tr><td class="k">Answer Code</td><td class="v"></td><td class="hint">4 digits</td></tr>
+        <tr><td class="k">Priority</td><td class="v"></td><td class="hint">P1 P2 P3 P4</td></tr>
+        <tr><td class="k">Status</td><td class="v"></td><td class="hint">&nbsp;</td></tr>
+        <tr><td class="k">Reported by</td><td class="v"></td><td class="hint">&nbsp;</td></tr>
+      </table>
+      <table class="wide">
+        <tr><td class="k">Issue</td><td class="v"></td></tr>
+        <tr><td class="k"></td><td class="v"></td></tr>
+      </table>
+      <p class="foot">Capitals please. One ticket per sheet.</p>
+    </div>`;
+  };
+  document.write(sheet() + sheet());
+</script>
+
+</body>
+</html>
