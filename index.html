@@ -59,7 +59,7 @@ body{
 .stat{line-height:1.05}
 .stat b{font-family:var(--f-display);font-size:1.7rem;font-weight:600;display:block;font-variant-numeric:tabular-nums}
 .stat span{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
-.icon-btn{background:none;border:1px solid var(--line);color:var(--muted);height:38px;min-width:38px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:.8rem;font-family:var(--f-ui);display:inline-flex;align-items:center;gap:6px;transition:.2s}
+.icon-btn{background:none;border:1px solid var(--line);color:var(--muted);height:38px;min-width:38px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:.8rem;font-family:var(--f-ui);display:inline-flex;align-items:center;gap:6px;transition:.2s;text-decoration:none}
 .icon-btn:hover{color:var(--fg);border-color:var(--accent)}
 .tools{display:flex;gap:8px;align-items:center}
 .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
@@ -175,6 +175,7 @@ dl.specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-siz
       <div class="stat"><b id="statWish">0</b><span>On the wishlist</span></div>
       <div class="stat"><b id="statValue">—</b><span>Collection value</span></div>
       <div class="tools">
+        <a class="icon-btn" href="https://gilvanrds1-bit.github.io/Claude-projects/guide.html" target="_blank" rel="noopener" title="Open the Quick Start guide">❔ Guide</a>
         <button class="icon-btn" id="backupBtn" title="Export a backup file">⇩ Backup</button>
         <button class="icon-btn" id="restoreBtn" title="Import a backup file">⇧ Restore</button>
         <button class="icon-btn" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
