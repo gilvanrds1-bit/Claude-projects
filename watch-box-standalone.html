@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Watch Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+/* Standalone build — runs from a local file, no account or server needed.
+   Data is stored in this browser (localStorage); use Backup to export/import.
+   Layout: warm neutral page framing a wooden watch box of felt slots. */
+:root{
+  --bg:#e7ded0; --surface:#f7f2e9; --surface-2:#efe7d9;
+  --fg:#2b2420; --muted:#6f6555; --line:#d6c9b4;
+  --accent:#9a6b3a; --accent-ink:#6b4522; --danger:#9a3b2e;
+  --shadow:rgba(40,28,16,.28);
+  --wood-1:#7a4e2c; --wood-2:#4d2f19; --wood-3:#8f5a32; --wood-4:#39220f; --wood-edge:#2d1a0c;
+  --felt-1:#20453a; --felt-2:#143026; --felt-shadow:rgba(0,0,0,.55);
+  --brass-1:#e8cd86; --brass-2:#c9a24b; --brass-3:#9c7a33; --plate-ink:#3a2a12;
+  --radius:14px; --maxw:1120px;
+  --f-display:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --f-ui:"Jost",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#161210; --surface:#231d17; --surface-2:#1b1611;
+    --fg:#ece4d7; --muted:#a99d8b; --line:#352c22;
+    --accent:#d6a660; --accent-ink:#edcb92; --danger:#e08a7b;
+    --shadow:rgba(0,0,0,.5); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161210; --surface:#231d17; --surface-2:#1b1611;
+  --fg:#ece4d7; --muted:#a99d8b; --line:#352c22;
+  --accent:#d6a660; --accent-ink:#edcb92; --danger:#e08a7b;
+  --shadow:rgba(0,0,0,.5); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{
+  background:radial-gradient(120% 90% at 50% -10%, color-mix(in srgb,var(--accent) 10%, transparent), transparent 60%),var(--bg);
+  color:var(--fg); font-family:var(--f-ui); font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{
+  max-width:var(--maxw); margin:0 auto; padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+.brand h1{font-family:var(--f-display);font-weight:600;font-size:clamp(2.1rem,5.5vw,3.1rem);line-height:.98;margin:0;letter-spacing:.01em;text-wrap:balance}
+.brand .tagline{margin:.3rem 0 0;font-size:.74rem;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+.stats{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+.stat{line-height:1.05}
+.stat b{font-family:var(--f-display);font-size:1.7rem;font-weight:600;display:block;font-variant-numeric:tabular-nums}
+.stat span{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.icon-btn{background:none;border:1px solid var(--line);color:var(--muted);height:38px;min-width:38px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:.8rem;font-family:var(--f-ui);display:inline-flex;align-items:center;gap:6px;transition:.2s}
+.icon-btn:hover{color:var(--fg);border-color:var(--accent)}
+.tools{display:flex;gap:8px;align-items:center}
+.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.filters{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;gap:2px}
+.filters button{border:0;background:none;cursor:pointer;color:var(--muted);font-family:var(--f-ui);font-size:.82rem;font-weight:500;padding:7px 16px;border-radius:999px;transition:.18s;letter-spacing:.02em;display:inline-flex;align-items:center;gap:7px}
+.filters button .n{font-size:.72rem;background:color-mix(in srgb,var(--muted) 20%,transparent);color:var(--muted);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums}
+.filters button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 3px var(--shadow)}
+.filters button[aria-selected="true"] .n{background:var(--accent);color:#fff}
+.search{flex:1 1 200px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 16px;color:var(--fg);font-family:var(--f-ui);font-size:.9rem}
+.search::placeholder{color:var(--muted)}
+.search:focus-visible,.filters button:focus-visible,.icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font-family:var(--f-ui);font-weight:500;font-size:.88rem;cursor:pointer;border-radius:999px;padding:10px 20px;border:1px solid transparent;transition:.18s;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn-primary{background:linear-gradient(180deg,var(--brass-1),var(--brass-2));color:#2a1c08;border-color:var(--brass-3);box-shadow:0 2px 8px color-mix(in srgb,var(--brass-3) 40%,transparent);letter-spacing:.02em}
+.btn-primary:hover{filter:brightness(1.05)}
+.btn-ghost{background:var(--surface);color:var(--fg);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--accent)}
+.btn-danger{background:none;color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.btn-danger:hover{background:color-mix(in srgb,var(--danger) 12%,transparent)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.box{position:relative;border-radius:22px;padding:18px;
+  background:repeating-linear-gradient(94deg, color-mix(in srgb,var(--wood-4) 55%,transparent) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(90deg, var(--wood-2) 0 3px, var(--wood-1) 3px 9px, var(--wood-3) 9px 13px, var(--wood-1) 13px 18px),
+    linear-gradient(160deg,var(--wood-3),var(--wood-2));
+  box-shadow:0 2px 0 color-mix(in srgb,var(--brass-1) 30%,transparent) inset,0 24px 50px -18px var(--shadow),0 0 0 1px var(--wood-edge)}
+.box::after{content:"";position:absolute;inset:7px;border-radius:16px;pointer-events:none;border:2px solid color-mix(in srgb,var(--brass-2) 35%,transparent);box-shadow:0 0 0 1px var(--wood-edge) inset}
+.box-interior{position:relative;border-radius:12px;padding:clamp(12px,2.4vw,24px);
+  background:radial-gradient(130% 120% at 50% 0%, color-mix(in srgb,var(--felt-1) 85%,#000 0%), var(--felt-2)),var(--felt-2);
+  box-shadow:0 10px 26px var(--felt-shadow) inset,0 1px 0 rgba(255,255,255,.04) inset}
+.grid{display:grid;gap:clamp(12px,2vw,20px);grid-template-columns:repeat(auto-fill,minmax(146px,1fr));align-items:start}
+.slot{position:relative;border-radius:11px;
+  background:radial-gradient(120% 120% at 50% 18%, color-mix(in srgb,var(--felt-1) 70%,#000), var(--felt-2));
+  box-shadow:0 7px 16px var(--felt-shadow) inset,0 1px 0 rgba(255,255,255,.05);
+  border:1px solid rgba(0,0,0,.35);cursor:pointer;overflow:hidden;display:flex;flex-direction:column;
+  transition:transform .18s ease, box-shadow .18s ease;text-align:left;width:100%;font-family:inherit;color:inherit;padding:0}
+.slot:hover,.slot:focus-visible{transform:translateY(-3px);box-shadow:0 7px 16px var(--felt-shadow) inset,0 10px 22px -8px rgba(0,0,0,.6);outline:none}
+.slot:focus-visible{box-shadow:0 7px 16px var(--felt-shadow) inset,0 0 0 2px var(--brass-1)}
+.slot .pic{aspect-ratio:1;width:100%;position:relative;display:grid;place-items:center;overflow:hidden}
+.slot .pic img{width:100%;height:100%;object-fit:cover;display:block}
+.slot .pic .vig{position:absolute;inset:0;background:radial-gradient(70% 70% at 50% 40%,transparent 55%,rgba(0,0,0,.45));pointer-events:none}
+.silhouette{width:62%;height:62%;opacity:.5;color:var(--brass-1)}
+.slot.wish .pic img,.slot.wish .silhouette{filter:saturate(.82)}
+.nameplate{background:linear-gradient(180deg,var(--brass-1),var(--brass-2) 55%,var(--brass-3));color:var(--plate-ink);padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-top:1px solid color-mix(in srgb,var(--brass-1) 80%,#fff);box-shadow:0 -2px 6px rgba(0,0,0,.3)}
+.nameplate .mk{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;font-weight:600;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nameplate .md{font-family:var(--f-display);font-weight:600;font-size:1rem;line-height:1.14;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;height:2.28em}
+.tag{position:absolute;top:10px;right:-30px;transform:rotate(45deg);background:linear-gradient(180deg,var(--brass-1),var(--brass-2));color:#2a1c08;font-size:.56rem;font-weight:600;letter-spacing:.18em;padding:3px 34px;text-transform:uppercase;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.slot.add{aspect-ratio:1;cursor:pointer;border:1.5px dashed color-mix(in srgb,var(--brass-1) 45%,transparent);background:radial-gradient(120% 120% at 50% 20%, color-mix(in srgb,var(--felt-1) 55%,#000), var(--felt-2));align-items:center;justify-content:center;color:var(--brass-1)}
+.slot.add .plus{font-size:2.2rem;line-height:1;font-weight:300}
+.slot.add .lbl{font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;margin-top:6px;opacity:.85}
+.slot.ghost{aspect-ratio:1;cursor:default;opacity:.5;box-shadow:0 7px 16px var(--felt-shadow) inset}
+.slot.ghost:hover{transform:none}
+.slot[draggable="true"]{cursor:grab}
+.slot.dragging{opacity:.45;cursor:grabbing}
+.slot.drop-before::after,.slot.drop-after::after{content:"";position:absolute;top:6px;bottom:6px;width:3px;border-radius:3px;background:var(--brass-1);box-shadow:0 0 8px rgba(0,0,0,.45);z-index:3}
+.slot.drop-before::after{left:-8px}
+.slot.drop-after::after{right:-8px}
+.reorder-hint{color:var(--muted);font-size:.74rem;letter-spacing:.04em;margin:14px 2px 0;text-align:center}
+.empty-note{text-align:center;color:color-mix(in srgb,var(--brass-1) 80%,#fff);font-family:var(--f-display);font-size:1.3rem;margin:4px 0 16px;letter-spacing:.01em}
+.banner{background:color-mix(in srgb,var(--accent) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--fg);border-radius:12px;padding:12px 16px;margin-bottom:18px;font-size:.88rem}
+.overlay{position:fixed;inset:0;background:rgba(20,12,6,.6);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;z-index:50;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet{background:var(--surface);color:var(--fg);border-radius:18px;width:min(720px,100%);max-height:90vh;overflow:auto;box-shadow:0 30px 70px -20px rgba(0,0,0,.6);border:1px solid var(--line)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2}
+.sheet-head h2{font-family:var(--f-display);font-weight:600;font-size:1.5rem;margin:0}
+.x{background:none;border:0;color:var(--muted);font-size:1.5rem;cursor:pointer;line-height:1;padding:4px 8px;border-radius:8px}
+.x:hover{color:var(--fg);background:var(--surface-2)}
+.sheet-body{padding:22px}
+.detail{display:grid;grid-template-columns:1fr 1.1fr;gap:24px}
+.detail .photo{aspect-ratio:1;border-radius:14px;overflow:hidden;background:radial-gradient(120% 120% at 50% 20%,var(--felt-1),var(--felt-2));display:grid;place-items:center;box-shadow:0 8px 20px var(--felt-shadow) inset}
+.detail .photo img{width:100%;height:100%;object-fit:cover}
+.detail .photo .silhouette{width:55%;height:55%}
+.detail h3{font-family:var(--f-display);font-weight:600;font-size:2rem;margin:.1rem 0 0;line-height:1}
+.detail .mk{font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+.status-pill{display:inline-flex;align-items:center;gap:7px;margin-top:12px;font-size:.74rem;letter-spacing:.06em;padding:5px 13px;border-radius:999px;font-weight:500}
+.status-pill.owned{background:color-mix(in srgb,var(--felt-1) 22%,transparent);color:var(--felt-1);border:1px solid color-mix(in srgb,var(--felt-1) 40%,transparent)}
+.status-pill.wish{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+:root[data-theme="dark"] .status-pill.owned,:root:not([data-theme="light"]) .status-pill.owned{color:#8fd0b4}
+dl.specs{margin:18px 0 0}
+dl.specs .spec{display:flex;align-items:baseline;justify-content:space-between;gap:18px;padding:11px 0;border-top:1px solid var(--line)}
+dl.specs dt{color:var(--muted);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;margin:0;flex:none}
+dl.specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-size:.98rem;min-width:0}
+.detail-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.confirm-del{margin-top:14px;padding:12px 14px;border-radius:10px;font-size:.85rem;background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 35%,transparent);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field.full{grid-column:1 / -1}
+.field label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.field input,.field select{font-family:var(--f-ui);font-size:.92rem;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%;min-width:0}
+.field input:focus-visible,.field select:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.hint{font-size:.74rem;color:var(--muted)}
+.cost-row{display:grid;grid-template-columns:1fr 92px;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2);width:100%}
+.seg button{flex:1;border:0;background:none;padding:9px;cursor:pointer;color:var(--muted);font-family:var(--f-ui);font-size:.85rem;font-weight:500;transition:.15s}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.img-drop{grid-column:1 / -1;display:flex;gap:14px;align-items:flex-start;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.img-drop .prev{width:74px;height:74px;border-radius:10px;flex:none;overflow:hidden;background:radial-gradient(var(--felt-1),var(--felt-2));display:grid;place-items:center}
+.img-drop .prev img{width:100%;height:100%;object-fit:cover}
+.img-drop .prev .silhouette{width:55%;height:55%}
+.form-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.err{color:var(--danger);font-size:.82rem;margin-top:10px;min-height:1em}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:620px){.detail{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.stats{gap:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div class="brand">
+      <h1>The Watch Box</h1>
+      <p class="tagline">Collection &amp; wishlist</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="statOwned">0</b><span>In collection</span></div>
+      <div class="stat"><b id="statWish">0</b><span>On the wishlist</span></div>
+      <div class="stat"><b id="statValue">—</b><span>Collection value</span></div>
+      <div class="tools">
+        <button class="icon-btn" id="backupBtn" title="Export a backup file">⇩ Backup</button>
+        <button class="icon-btn" id="restoreBtn" title="Import a backup file">⇧ Restore</button>
+        <button class="icon-btn" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
+        <input id="restoreInput" type="file" accept="application/json,.json" class="visually-hidden">
+      </div>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <div class="controls">
+    <div class="filters" role="tablist" aria-label="Filter watches">
+      <button role="tab" aria-selected="true" data-filter="all">All <span class="n" id="nAll">0</span></button>
+      <button role="tab" aria-selected="false" data-filter="owned">Collection <span class="n" id="nOwned">0</span></button>
+      <button role="tab" aria-selected="false" data-filter="wish">Wishlist <span class="n" id="nWish">0</span></button>
+    </div>
+    <input class="search" id="search" type="search" placeholder="Search brand, model or reference…" aria-label="Search watches">
+    <button class="btn btn-primary" id="addBtn">＋ Add watch</button>
+  </div>
+
+  <main class="box">
+    <div class="box-interior">
+      <p class="empty-note" id="emptyNote" hidden>Your box is empty — add your first watch.</p>
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+  <p class="reorder-hint" id="reorderHint" hidden>Drag a watch to reorder it within the box.</p>
+</div>
+<datalist id="brands"></datalist>
+
+<script>
+"use strict";
+const KEY="watchbox.v1";
+const CURRENCIES=["USD","EUR","GBP","JPY","CHF","AUD","CAD","BRL","SEK","SGD","HKD","AED"];
+const CUR_SYMBOL={USD:"$",EUR:"€",GBP:"£",JPY:"¥",CHF:"CHF ",AUD:"A$",CAD:"C$",BRL:"R$",SEK:"kr ",SGD:"S$",HKD:"HK$",AED:"AED "};
+const SILHOUETTE=`<svg class="silhouette" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+  <circle cx="50" cy="52" r="24"/>
+  <path d="M40 28 L42 15 H58 L60 28" stroke-linejoin="round"/>
+  <path d="M40 76 L42 89 H58 L60 76" stroke-linejoin="round"/>
+  <circle cx="50" cy="52" r="1.6" fill="currentColor" stroke="none"/>
+  <path d="M50 52 V38 M50 52 L61 56" stroke-linecap="round"/>
+</svg>`;
+
+/* Major watch brands — suggested as you type in the Brand box (you can still
+   type anything). Brand names only; specs are always yours to enter. */
+const BRANDS=["A. Lange & Söhne","Alpina","Angelus","Apple","Arnold & Son","Audemars Piguet","Baltic","Ball","Baume & Mercier","Bell & Ross","Blancpain","Breguet","Breitling","Bremont","Bulgari","Bulova","Cartier","Casio","Certina","Chopard","Christopher Ward","Chronoswiss","Citizen","Corum","Doxa","Ebel","Eterna","Farer","Formex","Fortis","Franck Muller","Frederique Constant","Garmin","Girard-Perregaux","Glashütte Original","Grand Seiko","Hamilton","Hanhart","H. Moser & Cie","Hublot","IWC","Jaeger-LeCoultre","Junghans","Laco","Longines","Lorier","Louis Vuitton","Maurice Lacroix","MeisterSinger","Mido","Mondaine","Montblanc","Monta","Movado","Mühle Glashütte","Nivada Grenchen","Nomos Glashütte","Omega","Orient","Oris","Panerai","Parmigiani Fleurier","Patek Philippe","Piaget","Rado","Raymond Weil","Richard Mille","Roger Dubuis","Rolex","Seiko","Serica","Sinn","Squale","Stowa","Swatch","TAG Heuer","Timex","Tissot","Tudor","Tutima","Ulysse Nardin","Unimatic","Vacheron Constantin","Victorinox","Vostok","Yema","Zenith","Zodiac"];
+
+let watches=[];           // [{id, brand, model, reference, movement, dial, lug, purchased, purchaseDate, cost, currency, image, createdAt}]
+let filter="all", search="", editingId=null, pendingImage=undefined; // undefined=keep, null=remove, string=new
+
+const $=s=>document.querySelector(s);
+const grid=$("#grid");
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const uid=()=>(crypto&&crypto.randomUUID?crypto.randomUUID():"w"+Date.now()+Math.random().toString(16).slice(2));
+
+/* ---------- storage (IndexedDB, with a localStorage fallback) ----------
+   IndexedDB holds far more than localStorage, so photos no longer fill it up. */
+let IDB=null;
+function openDB(){
+  return new Promise(resolve=>{
+    if(!("indexedDB" in window)){resolve(null);return;}
+    let req; try{req=indexedDB.open("watchbox",1);}catch(e){resolve(null);return;}
+    req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains("watches"))d.createObjectStore("watches",{keyPath:"id"});};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>resolve(null);
+    req.onblocked=()=>resolve(null);
+  });
+}
+function idbAll(){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readonly");const r=t.objectStore("watches").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
+function idbPut(rec){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readwrite");t.objectStore("watches").put(rec);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});}
+function idbDel(id){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readwrite");t.objectStore("watches").delete(id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+function saveLS(){try{localStorage.setItem(KEY,JSON.stringify(watches));return true;}catch(e){return false;}}
+const Store={
+  async all(){
+    if(IDB){try{return await idbAll();}catch(e){}}
+    try{const raw=localStorage.getItem(KEY);const a=raw?JSON.parse(raw):[];return Array.isArray(a)?a:[];}catch(e){return [];}
+  },
+  async put(rec){ if(IDB){await idbPut(rec);return true;} return saveLS(); },
+  async del(id){ if(IDB){await idbDel(id);return true;} return saveLS(); },
+  async bulkPut(list){ if(IDB){for(const r of list)await idbPut(r);return true;} return saveLS(); }
+};
+function showBanner(msg){const b=$("#banner");b.textContent=msg;b.hidden=false;clearTimeout(showBanner._t);showBanner._t=setTimeout(()=>{b.hidden=true;},6000);}
+
+/* theme */
+(function(){
+  try{const t=localStorage.getItem("wb-theme"); if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}
+})();
+$("#themeBtn").addEventListener("click",()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  const next=cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme: dark)").matches?"light":"dark"));
+  document.documentElement.setAttribute("data-theme",next);
+  try{localStorage.setItem("wb-theme",next);}catch(e){}
+});
+
+/* ---------- helpers ---------- */
+function money(amount,cur){
+  if(amount==null||amount==="")return "";
+  const n=Number(amount); if(!isFinite(n))return "";
+  try{return new Intl.NumberFormat(undefined,{style:"currency",currency:cur||"USD",maximumFractionDigits:n%1?2:0}).format(n);}
+  catch(e){return (CUR_SYMBOL[cur]||"")+n.toLocaleString();}
+}
+function fmtDate(s){if(!s)return "";const d=new Date(s+"T00:00:00");if(isNaN(d))return s;return d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});}
+
+/* downscale an uploaded image to keep storage small; resolves to a data URL */
+function processImage(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      const max=760; let w=img.naturalWidth, h=img.naturalHeight;
+      if(w>max||h>max){const r=Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r);}
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      try{resolve(c.toDataURL("image/jpeg",0.82));}catch(e){reject(e);}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("bad image"));};
+    img.src=url;
+  });
+}
+
+/* ---------- rendering ---------- */
+function matches(w){
+  if(filter==="owned"&&!w.purchased)return false;
+  if(filter==="wish"&&w.purchased)return false;
+  if(search){const hay=(w.brand+" "+w.model+" "+(w.reference||"")).toLowerCase();if(!hay.includes(search))return false;}
+  return true;
+}
+function dragEnabled(){return filter==="all" && !search;}
+function sortedWatches(){return watches.slice().sort((a,b)=>((a.order??a.createdAt??0)-(b.order??b.createdAt??0)));}
+function slotHTML(w){
+  const img=w.image?`<img src="${esc(w.image)}" alt="${esc(w.brand)} ${esc(w.model)}" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(window.__SIL))">`:SILHOUETTE;
+  return `<button class="slot ${w.purchased?"":"wish"}" data-id="${esc(w.id)}" draggable="${dragEnabled()?"true":"false"}" aria-label="${esc(w.brand)} ${esc(w.model)} — view details">
+    ${w.purchased?"":'<div class="tag">Wish</div>'}
+    <div class="pic">${img}<div class="vig"></div></div>
+    <div class="nameplate"><div class="mk">${esc(w.brand)}</div><div class="md">${esc(w.model)}</div></div>
+  </button>`;
+}
+window.__SIL=SILHOUETTE;
+function render(){
+  const owned=watches.filter(w=>w.purchased).length;
+  const wish=watches.length-owned;
+  $("#statOwned").textContent=owned; $("#statWish").textContent=wish;
+  $("#nAll").textContent=watches.length; $("#nOwned").textContent=owned; $("#nWish").textContent=wish;
+  const totals={};
+  watches.filter(w=>w.purchased&&w.cost).forEach(w=>{const c=w.currency||"USD";totals[c]=(totals[c]||0)+Number(w.cost||0);});
+  const parts=Object.keys(totals).map(c=>money(totals[c],c));
+  $("#statValue").textContent=parts.length?parts.join(" · "):"—";
+
+  const list=sortedWatches().filter(matches);
+  let html=list.map(slotHTML).join("");
+  html+=`<button class="slot add" id="addSlot" aria-label="Add a watch"><div class="plus">＋</div><div class="lbl">Add watch</div></button>`;
+  const minCells=6, filled=list.length+1;
+  for(let i=filled;i<minCells;i++)html+=`<div class="slot ghost" aria-hidden="true"></div>`;
+  grid.innerHTML=html;
+
+  const en=$("#emptyNote");
+  if(watches.length===0){en.hidden=false;en.textContent="Your box is empty — add your first watch.";}
+  else if(list.length===0){en.hidden=false;en.textContent="No watches match this view.";}
+  else en.hidden=true;
+
+  const rh=$("#reorderHint"); if(rh)rh.hidden=!(dragEnabled()&&watches.length>1);
+}
+
+/* ---------- detail ---------- */
+function openDetail(id){
+  const w=watches.find(x=>x.id===id); if(!w)return;
+  const img=w.image?`<img src="${esc(w.image)}" alt="${esc(w.brand)} ${esc(w.model)}" onerror="this.replaceWith(document.createRange().createContextualFragment(window.__SIL))">`:SILHOUETTE;
+  const rows=[];
+  if(w.reference)rows.push(["Reference",esc(w.reference)]);
+  if(w.movement)rows.push(["Movement",esc(w.movement.charAt(0).toUpperCase()+w.movement.slice(1))]);
+  if(w.dial)rows.push(["Dial size",esc(w.dial)+" mm"]);
+  if(w.lug)rows.push(["Lug-to-lug",esc(w.lug)+" mm"]);
+  if(w.purchased){rows.push(["Purchased",w.purchaseDate?esc(fmtDate(w.purchaseDate)):"Yes"]);if(w.cost)rows.push(["Cost",esc(money(w.cost,w.currency))]);}
+  const status=w.purchased?`<span class="status-pill owned">● In the collection</span>`:`<span class="status-pill wish">○ On the wishlist</span>`;
+  openSheet(`${esc(w.brand)} ${esc(w.model)}`,`
+    <div class="detail">
+      <div class="photo">${img}</div>
+      <div>
+        <div class="mk">${esc(w.brand)}</div>
+        <h3>${esc(w.model)}</h3>
+        ${status}
+        <dl class="specs">${rows.map(r=>`<div class="spec"><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join("")||`<div class="spec"><dt>No specs yet</dt><dd>—</dd></div>`}</dl>
+        <div class="detail-actions">
+          <button class="btn btn-primary" id="editBtn">Edit</button>
+          <button class="btn btn-danger" id="delBtn">Delete</button>
+        </div>
+        <div id="delZone"></div>
+      </div>
+    </div>`);
+  $("#editBtn").onclick=()=>openForm(id);
+  $("#delBtn").onclick=()=>{
+    $("#delZone").innerHTML=`<div class="confirm-del"><span>Remove this watch from the box?</span>
+      <span style="display:flex;gap:8px"><button class="btn btn-ghost" id="delNo">Keep</button>
+      <button class="btn btn-danger" id="delYes">Delete</button></span></div>`;
+    $("#delNo").onclick=()=>{$("#delZone").innerHTML="";};
+    $("#delYes").onclick=async()=>{
+      const prev=watches.slice();
+      watches=watches.filter(x=>x.id!==id);
+      try{await Store.del(id);render();closeSheet();}
+      catch(e){watches=prev;$("#delZone").innerHTML='<div class="confirm-del">Couldn\'t delete just now — please try again.</div>';}
+    };
+  };
+}
+
+/* ---------- form ---------- */
+function openForm(id){
+  editingId=id||null; pendingImage=undefined;
+  const w=id?watches.find(x=>x.id===id)||{}:{};
+  const cur=w.currency||"GBP";
+  const curOpts=CURRENCIES.map(c=>`<option value="${c}" ${c===cur?"selected":""}>${c}</option>`).join("");
+  openSheet(id?"Edit watch":"Add a watch",`
+    <form id="watchForm" novalidate>
+      <div class="form-grid">
+        <div class="field"><label for="f-brand">Brand *</label><input id="f-brand" required list="brands" autocomplete="off" value="${esc(w.brand||"")}"></div>
+        <div class="field"><label for="f-model">Model name *</label><input id="f-model" required value="${esc(w.model||"")}"></div>
+        <div class="field"><label for="f-ref">Model reference</label><input id="f-ref" value="${esc(w.reference||"")}"></div>
+        <div class="field"><label for="f-move">Movement</label>
+          <select id="f-move">
+            <option value="">—</option>
+            <option value="automatic" ${w.movement==="automatic"?"selected":""}>Automatic</option>
+            <option value="mechanical" ${w.movement==="mechanical"?"selected":""}>Mechanical (hand-wind)</option>
+            <option value="quartz" ${w.movement==="quartz"?"selected":""}>Quartz</option>
+          </select>
+        </div>
+        <div class="field"><label for="f-dial">Dial size (mm)</label><input id="f-dial" type="number" step="0.1" inputmode="decimal" value="${esc(w.dial||"")}"></div>
+        <div class="field"><label for="f-lug">Lug-to-lug (mm)</label><input id="f-lug" type="number" step="0.1" inputmode="decimal" value="${esc(w.lug||"")}"></div>
+        <div class="field full"><label>Status</label>
+          <div class="seg" role="group" aria-label="Ownership">
+            <button type="button" id="seg-wish" aria-pressed="${w.purchased?"false":"true"}">○ Wishlist</button>
+            <button type="button" id="seg-own" aria-pressed="${w.purchased?"true":"false"}">● In collection</button>
+          </div>
+        </div>
+        <div class="field" id="dateField"><label for="f-date">Purchase date</label><input id="f-date" type="date" value="${esc(w.purchaseDate||"")}"></div>
+        <div class="field"><label for="f-cost">Cost</label>
+          <div class="cost-row">
+            <input id="f-cost" type="number" step="0.01" inputmode="decimal" placeholder="0" value="${esc(w.cost||"")}">
+            <select id="f-cur" aria-label="Currency">${curOpts}</select>
+          </div>
+        </div>
+        <div class="img-drop">
+          <div class="prev" id="imgPrev">${w.image?`<img src="${esc(w.image)}" alt="">`:SILHOUETTE}</div>
+          <div style="flex:1;min-width:0">
+            <label style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500">Photo</label>
+            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+              <label class="btn btn-ghost" style="cursor:pointer">Upload photo<input id="f-img" type="file" accept="image/*" class="visually-hidden"></label>
+              <button type="button" class="btn btn-ghost" id="imgClear" ${w.image?"":"hidden"}>Remove</button>
+            </div>
+            <input id="f-imgurl" placeholder="…or paste a direct image link (ends in .jpg / .png)" style="margin-top:8px;font-family:var(--f-ui);font-size:.88rem;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;width:100%">
+            <span class="hint" id="imgHint" style="display:block;margin-top:6px">Uploads are shrunk to save space and stay on your computer.</span>
+          </div>
+        </div>
+      </div>
+      <div class="err" id="formErr"></div>
+      <div class="form-foot">
+        <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">${id?"Save changes":"Add to box"}</button>
+      </div>
+    </form>`);
+
+  let purchased=!!w.purchased;
+  const syncStatus=()=>{
+    $("#seg-own").setAttribute("aria-pressed",purchased?"true":"false");
+    $("#seg-wish").setAttribute("aria-pressed",purchased?"false":"true");
+    $("#dateField").style.display=purchased?"":"none";
+  };
+  $("#seg-own").onclick=()=>{purchased=true;syncStatus();};
+  $("#seg-wish").onclick=()=>{purchased=false;syncStatus();};
+  syncStatus();
+
+  $("#f-img").addEventListener("change",async e=>{
+    const file=e.target.files&&e.target.files[0]; if(!file)return;
+    $("#imgHint").textContent="Processing image…";
+    try{
+      const data=await processImage(file);
+      pendingImage=data; $("#f-imgurl").value="";
+      $("#imgPrev").innerHTML=`<img src="${data}" alt="">`; $("#imgClear").hidden=false;
+      $("#imgHint").textContent="Photo ready.";
+    }catch(err){$("#imgHint").textContent="Couldn't read that image — try another file.";}
+  });
+  $("#f-imgurl").addEventListener("input",e=>{
+    const v=e.target.value.trim();
+    if(v){pendingImage=v;$("#imgPrev").innerHTML=`<img src="${esc(v)}" alt="" onerror="this.style.opacity=.3">`;$("#imgClear").hidden=false;}
+  });
+  $("#imgClear").addEventListener("click",()=>{
+    pendingImage=null; $("#imgPrev").innerHTML=SILHOUETTE; $("#imgClear").hidden=true;
+    $("#f-img").value=""; $("#f-imgurl").value="";
+  });
+
+  $("#cancelBtn").onclick=closeSheet;
+  $("#watchForm").addEventListener("submit",ev=>{ev.preventDefault();saveWatch(purchased);});
+  setTimeout(()=>$("#f-brand").focus(),30);
+}
+
+async function saveWatch(purchased){
+  const errEl=$("#formErr"); errEl.textContent="";
+  const brand=$("#f-brand").value.trim(), model=$("#f-model").value.trim();
+  if(!brand||!model){errEl.textContent="Brand and model name are required.";return;}
+  const num=sel=>{const n=parseFloat($(sel).value);return isFinite(n)?n:null;};
+  const existing=editingId?watches.find(x=>x.id===editingId):null;
+  let image=existing?existing.image||null:null;
+  if(pendingImage!==undefined)image=pendingImage; // new string or null(remove)
+
+  const maxOrder=watches.reduce((m,w)=>Math.max(m,typeof w.order==="number"?w.order:-1),-1);
+  const rec={
+    id:editingId||uid(),
+    brand, model,
+    reference:$("#f-ref").value.trim(),
+    movement:$("#f-move").value,
+    dial:num("#f-dial"), lug:num("#f-lug"),
+    purchased:!!purchased,
+    purchaseDate:purchased?($("#f-date").value||""):"",
+    cost:purchased?num("#f-cost"):null,
+    currency:$("#f-cur").value,
+    image,
+    createdAt:existing?existing.createdAt:Date.now(),
+    order:existing&&typeof existing.order==="number"?existing.order:maxOrder+1
+  };
+  const prevArr=watches.slice();
+  if(editingId){const i=watches.findIndex(x=>x.id===editingId);watches[i]=rec;}
+  else watches.push(rec);
+
+  const saveBtn=$("#saveBtn"); if(saveBtn){saveBtn.disabled=true;saveBtn.textContent="Saving…";}
+  try{
+    const ok=await Store.put(rec);
+    if(!ok)throw new Error("ls-full");
+    closeSheet(); render();
+  }catch(e){
+    watches=prevArr;
+    const full=(e&&e.name==="QuotaExceededError")||(e&&e.message==="ls-full");
+    errEl.textContent=full
+      ? "Couldn't save — this browser's storage is full. Try a smaller photo, or paste an image link instead of uploading."
+      : "Couldn't save just now — please try again.";
+    if(saveBtn){saveBtn.disabled=false;saveBtn.textContent=editingId?"Save changes":"Add to box";}
+  }
+}
+
+/* ---------- backup / restore ---------- */
+$("#backupBtn").addEventListener("click",()=>{
+  const blob=new Blob([JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="watch-box-backup-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+});
+$("#restoreBtn").addEventListener("click",()=>$("#restoreInput").click());
+$("#restoreInput").addEventListener("change",e=>{
+  const file=e.target.files&&e.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const data=JSON.parse(r.result);
+      const incoming=Array.isArray(data)?data:(data&&Array.isArray(data.watches)?data.watches:null);
+      if(!incoming)throw new Error("format");
+      const byId=new Set(watches.map(w=>w.id));
+      const toAdd=[]; let added=0;
+      incoming.forEach(w=>{if(w&&w.brand&&w.model){if(!w.id||byId.has(w.id))w.id=uid();watches.push(w);byId.add(w.id);toAdd.push(w);added++;}});
+      const ok=await Store.bulkPut(toAdd);
+      render();
+      showBanner(ok?("Restored "+added+" watch"+(added===1?"":"es")+" from backup."):"Restored, but storage ran out — export a backup and free some space.");
+    }catch(err){showBanner("That file isn't a valid Watch Box backup.");}
+    $("#restoreInput").value="";
+  };
+  r.readAsText(file);
+});
+
+/* ---------- modal plumbing ---------- */
+let lastFocus=null;
+function openSheet(title,body){
+  closeSheet(); lastFocus=document.activeElement;
+  const o=document.createElement("div"); o.className="overlay"; o.id="overlay";
+  o.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="sheet-head"><h2>${esc(title)}</h2><button class="x" aria-label="Close">×</button></div>
+    <div class="sheet-body">${body}</div></div>`;
+  document.body.appendChild(o);
+  o.querySelector(".x").onclick=closeSheet;
+  o.addEventListener("mousedown",e=>{if(e.target===o)closeSheet();});
+}
+function closeSheet(){const o=$("#overlay");if(o)o.remove();if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}}lastFocus=null;}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet();});
+
+/* ---------- events ---------- */
+grid.addEventListener("click",e=>{
+  if(e.target.closest("#addSlot")){openForm();return;}
+  const slot=e.target.closest(".slot[data-id]"); if(slot)openDetail(slot.dataset.id);
+});
+
+/* ---------- drag to reorder (mouse/trackpad; All view, no search) ---------- */
+let dragId=null;
+function clearDropMarks(){document.querySelectorAll(".slot.drop-before,.slot.drop-after").forEach(s=>s.classList.remove("drop-before","drop-after"));}
+function cleanupDrag(){dragId=null;clearDropMarks();document.querySelectorAll(".slot.dragging").forEach(s=>s.classList.remove("dragging"));}
+grid.addEventListener("dragstart",e=>{
+  const slot=e.target.closest('.slot[data-id][draggable="true"]');
+  if(!slot){e.preventDefault&&e.preventDefault();return;}
+  dragId=slot.dataset.id;
+  try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",dragId);}catch(_){}
+  slot.classList.add("dragging");
+});
+grid.addEventListener("dragover",e=>{
+  if(!dragId)return;
+  e.preventDefault(); try{e.dataTransfer.dropEffect="move";}catch(_){}
+  clearDropMarks();
+  const slot=e.target.closest(".slot[data-id]");
+  if(slot&&slot.dataset.id!==dragId){
+    const r=slot.getBoundingClientRect();
+    slot.classList.add(e.clientX>r.left+r.width/2?"drop-after":"drop-before");
+  }
+});
+grid.addEventListener("drop",async e=>{
+  if(!dragId)return;
+  e.preventDefault();
+  const from=dragId;
+  const slot=e.target.closest(".slot[data-id]");
+  let toId=null,after=false;
+  if(slot&&slot.dataset.id!==from){const r=slot.getBoundingClientRect();toId=slot.dataset.id;after=e.clientX>r.left+r.width/2;}
+  cleanupDrag();
+  await reorder(from,toId,after);
+});
+grid.addEventListener("dragend",cleanupDrag);
+
+async function reorder(fromId,toId,after){
+  const list=sortedWatches();
+  const fromIdx=list.findIndex(w=>w.id===fromId);
+  if(fromIdx<0)return;
+  const [moved]=list.splice(fromIdx,1);
+  let toIdx;
+  if(toId==null)toIdx=list.length;
+  else{toIdx=list.findIndex(w=>w.id===toId);if(toIdx<0)toIdx=list.length;else if(after)toIdx+=1;}
+  list.splice(toIdx,0,moved);
+  list.forEach((w,i)=>{w.order=i;});
+  try{await Store.bulkPut(list);render();}
+  catch(e){showBanner("Couldn't save the new order — please try again.");render();}
+}
+
+/* give every watch a sequential order the first time (migrating older data) */
+async function ensureOrder(){
+  if(!watches.length)return;
+  if(watches.every(w=>typeof w.order==="number"))return;
+  const sorted=watches.slice().sort((a,b)=>((a.order??a.createdAt??0)-(b.order??b.createdAt??0)));
+  sorted.forEach((w,i)=>{w.order=i;});
+  try{await Store.bulkPut(sorted);}catch(e){}
+}
+$("#addBtn").addEventListener("click",()=>openForm());
+document.querySelectorAll(".filters button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    filter=b.dataset.filter;
+    document.querySelectorAll(".filters button").forEach(x=>x.setAttribute("aria-selected",x===b?"true":"false"));
+    render();
+  });
+});
+$("#search").addEventListener("input",e=>{search=e.target.value.trim().toLowerCase();render();});
+
+/* ---------- boot ---------- */
+(async function boot(){
+  $("#brands").innerHTML=BRANDS.map(b=>`<option value="${esc(b)}"></option>`).join("");
+  IDB=await openDB();
+  watches=await Store.all();
+  if(IDB&&watches.length===0){ // bring over data from the earlier localStorage version, once
+    try{const raw=localStorage.getItem(KEY);if(raw){const a=JSON.parse(raw);if(Array.isArray(a)&&a.length){watches=a;await Store.bulkPut(a);}}}catch(e){}
+  }
+  await ensureOrder();
+  render();
+})();
+</script>
+</body>
+</html>
