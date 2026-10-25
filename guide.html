@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch Box — Quick Start Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Jost:wght@300;400;500;600&display=swap">
+<style>
+:root{
+  --bg:#ece3d4; --panel:#f8f3ea; --ink:#2b2420; --muted:#6f6555; --line:#ddd0ba;
+  --wood-1:#7a4e2c; --wood-2:#4d2f19; --wood-3:#8f5a32;
+  --brass-1:#e8cd86; --brass-2:#c9a24b; --brass-3:#9c7a33; --plate-ink:#3a2a12;
+  --felt:#1c3d31; --accent:#9a6b3a;
+  --f-display:"Cormorant Garamond",Georgia,serif;
+  --f-ui:"Jost",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:
+    radial-gradient(120% 60% at 50% -5%, rgba(154,107,58,.12), transparent 60%),
+    var(--bg);
+  color:var(--ink); font-family:var(--f-ui); font-size:16px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.sheet{max-width:860px;margin:0 auto;padding:0 20px 80px}
+
+/* header */
+header.hero{
+  text-align:center;padding:52px 20px 40px;
+}
+.badge{
+  display:inline-block;font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;
+  color:var(--brass-3);border:1px solid var(--brass-2);border-radius:999px;padding:6px 16px;margin-bottom:18px;
+}
+h1{font-family:var(--f-display);font-weight:600;font-size:clamp(2.6rem,7vw,4rem);margin:0;line-height:.98;letter-spacing:.01em}
+.hero p{color:var(--muted);max-width:30em;margin:14px auto 0;font-size:1.05rem}
+.openbtn{
+  display:inline-block;margin-top:26px;text-decoration:none;
+  background:linear-gradient(180deg,var(--brass-1),var(--brass-2));color:#2a1c08;
+  font-weight:600;letter-spacing:.02em;padding:13px 28px;border-radius:999px;border:1px solid var(--brass-3);
+  box-shadow:0 4px 14px rgba(156,122,51,.4);font-size:1rem;
+}
+.openbtn:hover{filter:brightness(1.05)}
+.urlline{margin-top:12px;font-size:.84rem;color:var(--muted);word-break:break-all}
+
+/* steps */
+.step{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;
+  padding:26px 28px;margin:22px 0;box-shadow:0 10px 30px -18px rgba(60,40,20,.5);
+}
+.step-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.num{
+  flex:none;width:40px;height:40px;border-radius:50%;
+  background:linear-gradient(180deg,var(--brass-1),var(--brass-2));color:var(--plate-ink);
+  font-family:var(--f-display);font-weight:600;font-size:1.3rem;
+  display:grid;place-items:center;box-shadow:inset 0 1px 0 #fff4d6,0 2px 5px rgba(0,0,0,.2);
+}
+.step h2{font-family:var(--f-display);font-weight:600;font-size:1.7rem;margin:0;line-height:1.05}
+.step .lead{color:var(--muted);margin:2px 0 0}
+.shot{
+  margin:20px 0 6px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  box-shadow:0 8px 22px -12px rgba(60,40,20,.55);background:#0e241c;
+}
+.shot img{display:block;width:100%}
+.cap{font-size:.8rem;color:var(--muted);text-align:center;margin:8px 0 0;font-style:italic}
+ol.tips,ul.tips{margin:14px 0 0;padding-left:0;list-style:none}
+ol.tips li,ul.tips li{position:relative;padding:7px 0 7px 34px;border-top:1px solid var(--line)}
+ol.tips li:first-child,ul.tips li:first-child{border-top:0}
+ol.tips{counter-reset:s}
+ol.tips li::before{
+  counter-increment:s;content:counter(s);position:absolute;left:0;top:7px;
+  width:22px;height:22px;border-radius:50%;background:var(--felt);color:#e7d8b8;
+  font-size:.72rem;font-weight:600;display:grid;place-items:center;
+}
+ul.tips li::before{content:"◆";position:absolute;left:4px;top:7px;color:var(--brass-2)}
+b.k{background:#f0e7d4;border:1px solid var(--line);border-radius:6px;padding:1px 8px;font-weight:600;white-space:nowrap}
+.pill{display:inline-block;border-radius:999px;padding:1px 10px;font-size:.82rem;font-weight:600}
+.pill.coll{background:rgba(28,61,49,.15);color:#1c3d31;border:1px solid rgba(28,61,49,.35)}
+.pill.wish{background:rgba(154,107,58,.16);color:#7a4e2c;border:1px solid rgba(154,107,58,.4)}
+
+/* important callout */
+.important{
+  background:linear-gradient(180deg,#fff8e8,#fdf1d8);border:1px solid var(--brass-2);
+  border-radius:18px;padding:26px 28px;margin:22px 0;box-shadow:0 10px 30px -18px rgba(156,122,51,.6);
+}
+.important .step-head .num{background:var(--felt);color:#e7d8b8}
+.important h2{color:#5a3a1c}
+
+/* faq */
+.faq{margin-top:34px}
+.faq h2{font-family:var(--f-display);font-weight:600;font-size:2rem;text-align:center;margin:0 0 10px}
+details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px 18px;margin:10px 0}
+summary{cursor:pointer;font-weight:500;padding:12px 0;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"＋";color:var(--brass-3);font-weight:600;margin-right:10px}
+details[open] summary::before{content:"－"}
+details p{margin:0 0 14px;color:var(--muted)}
+
+footer{text-align:center;color:var(--muted);margin-top:50px;font-size:.9rem}
+footer a{color:var(--accent)}
+
+@media print{
+  body{background:#fff}
+  .openbtn{display:none}
+  .step,.important,details{box-shadow:none;break-inside:avoid}
+  .shot{break-inside:avoid}
+}
+@media (max-width:560px){
+  .step,.important{padding:20px 18px}
+  .step h2{font-size:1.4rem}
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="hero">
+    <div class="badge">Quick Start Guide</div>
+    <h1>The Watch Box</h1>
+    <p>Keep track of the watches you own and the ones you're dreaming of — all in one handsome box. No account, no sign-up, no cost.</p>
+    <a class="openbtn" href="https://gilvanrds1-bit.github.io/Claude-projects/" target="_blank" rel="noopener">Open the Watch Box →</a>
+    <div class="urlline">gilvanrds1-bit.github.io/Claude-projects</div>
+  </header>
+
+  <section class="step">
+    <div class="step-head"><div class="num">1</div><div><h2>Open it &amp; keep it handy</h2><p class="lead">Works in any web browser, on computer or phone.</p></div></div>
+    <ul class="tips">
+      <li>Tap <b class="k">Open the Watch Box</b> above (or paste the link into your browser).</li>
+      <li><b>Bookmark it</b> — on a computer press <b class="k">Ctrl</b>+<b class="k">D</b>; on a phone use "Add to Home Screen". That's your one-tap way back in.</li>
+      <li>Your collection saves itself automatically on your own device. Nobody else can see it.</li>
+    </ul>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><div class="num">2</div><div><h2>Your box at a glance</h2><p class="lead">Here's what you're looking at.</p></div></div>
+    <div class="shot"><img src="guide-home.jpg" alt="The Watch Box main screen"></div>
+    <ul class="tips">
+      <li><b>Top row of numbers</b> — how many you own, how many are on your wishlist, and their total value.</li>
+      <li><b>All / Collection / Wishlist</b> — tap to switch between everything, only the ones you own, or only the ones you want.</li>
+      <li><b>Search box</b> — find a watch by brand, model or reference number.</li>
+      <li><b>＋ Add watch</b> — add a new watch (next step).</li>
+      <li><b>Backup / Restore</b> — your safety net (step 6 — don't skip it!).</li>
+    </ul>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><div class="num">3</div><div><h2>Add a watch</h2><p class="lead">Owned or wished-for — both live here.</p></div></div>
+    <div class="shot"><img src="guide-add.jpg" alt="The Add a watch form"></div>
+    <ol class="tips">
+      <li>Click <b class="k">＋ Add watch</b>.</li>
+      <li>Start typing the <b>Brand</b> — a list of well-known makers pops up. Pick one, or type your own.</li>
+      <li>Add the <b>Model name</b> (the only must-have), plus any details you know: reference, movement, dial size, lug-to-lug.</li>
+      <li>Choose the status: <span class="pill wish">○ Wishlist</span> for one you want, or <span class="pill coll">● In collection</span> for one you own. If you own it, add the purchase date and cost.</li>
+      <li><b>Add a photo (optional):</b> click <b class="k">Upload photo</b> to pick one from your device, <em>or</em> paste a direct image link.</li>
+      <li>Click <b class="k">Add to box</b>. It appears in your box straight away.</li>
+    </ol>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><div class="num">4</div><div><h2>Look at, edit or remove a watch</h2><p class="lead">Everything about a watch, one tap away.</p></div></div>
+    <div class="shot"><img src="guide-detail.jpg" alt="A watch's detail view"></div>
+    <ul class="tips">
+      <li><b>Click any watch</b> in the box to see its full details.</li>
+      <li>Click <b class="k">Edit</b> to change anything, then save.</li>
+      <li>Click <b class="k">Delete</b> to remove it — it asks you to confirm first, so you can't delete by accident.</li>
+    </ul>
+  </section>
+
+  <section class="step">
+    <div class="step-head"><div class="num">5</div><div><h2>Filter, search &amp; reorder</h2><p class="lead">Arrange the box the way you like.</p></div></div>
+    <ul class="tips">
+      <li><b>Filter:</b> use the <b class="k">All</b> / <b class="k">Collection</b> / <b class="k">Wishlist</b> tabs at the top.</li>
+      <li><b>Search:</b> type any brand, model or reference in the search box.</li>
+      <li><b>Reorder:</b> in the <b class="k">All</b> view, click and drag a watch to a new spot — a gold line shows where it will land, and the new order is saved. (Dragging uses a mouse or trackpad.)</li>
+    </ul>
+  </section>
+
+  <section class="important">
+    <div class="step-head"><div class="num">6</div><div><h2>Keep your collection safe</h2><p class="lead">The one habit worth having. Please read this.</p></div></div>
+    <ul class="tips">
+      <li>Your watches are saved <b>in this browser, on this device only</b>. They are not in the cloud and not tied to an account.</li>
+      <li>Click <b class="k">⇩ Backup</b> to download a single file containing your whole collection. Keep it somewhere safe (another folder, a USB stick, cloud storage, or email it to yourself).</li>
+      <li>Moving to a new phone or computer, or starting fresh? Open the app there, click <b class="k">⇧ Restore</b>, and choose your backup file — everything comes back.</li>
+      <li><b>Good habit:</b> click Backup whenever you've added or changed a few watches. That's all it takes to never lose anything.</li>
+    </ul>
+  </section>
+
+  <section class="faq">
+    <h2>Quick answers</h2>
+    <details><summary>Do I need an account or password?</summary><p>No. Just open the link and start adding watches.</p></details>
+    <details><summary>Will other people see my watches?</summary><p>No. Each person who opens the app has their own private box on their own device. Sharing the link shares the <em>app</em>, never your collection.</p></details>
+    <details><summary>Does it cost anything?</summary><p>No — it's completely free to use.</p></details>
+    <details><summary>Can I use it on my phone and my computer?</summary><p>Yes, but each device keeps its own separate collection. To copy your watches across, use <b>Backup</b> on one and <b>Restore</b> on the other.</p></details>
+    <details><summary>I cleared my browser / got a new device — where did my watches go?</summary><p>They live in the browser, so clearing its data removes them. This is exactly what <b>Backup</b> protects against: restore your latest backup file and you're back.</p></details>
+    <details><summary>Does a photo have to be uploaded?</summary><p>No. You can upload a picture from your device, paste a direct image link, or add no photo at all (a watch icon shows instead).</p></details>
+  </section>
+
+  <footer>
+    <p><a href="https://gilvanrds1-bit.github.io/Claude-projects/" target="_blank" rel="noopener">Open the Watch Box →</a></p>
+    <p>Happy collecting. 🕰️</p>
+  </footer>
+
+</div>
+</body>
+</html>
