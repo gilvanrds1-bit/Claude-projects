@@ -101,10 +101,12 @@ body{
 .slot .pic .vig{position:absolute;inset:0;background:radial-gradient(70% 70% at 50% 40%,transparent 55%,rgba(0,0,0,.45));pointer-events:none}
 .silhouette{width:62%;height:62%;opacity:.5;color:var(--brass-1)}
 .slot.wish .pic img,.slot.wish .silhouette{filter:saturate(.82)}
-.nameplate{background:linear-gradient(180deg,var(--brass-1),var(--brass-2) 55%,var(--brass-3));color:var(--plate-ink);padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-top:1px solid color-mix(in srgb,var(--brass-1) 80%,#fff);box-shadow:0 -2px 6px rgba(0,0,0,.3)}
+.nameplate{position:relative;background:linear-gradient(180deg,var(--brass-1),var(--brass-2) 55%,var(--brass-3));color:var(--plate-ink);padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-top:1px solid color-mix(in srgb,var(--brass-1) 80%,#fff);box-shadow:0 -2px 6px rgba(0,0,0,.3)}
 .nameplate .mk{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;font-weight:600;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nameplate .md{font-family:var(--f-display);font-weight:600;font-size:1rem;line-height:1.14;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;height:2.28em}
-.tag{position:absolute;top:10px;right:-30px;transform:rotate(45deg);background:linear-gradient(180deg,var(--brass-1),var(--brass-2));color:#2a1c08;font-size:.56rem;font-weight:600;letter-spacing:.18em;padding:3px 34px;text-transform:uppercase;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.wl-book{position:absolute;top:8px;right:10px;line-height:0;color:rgba(55,40,16,.6);filter:drop-shadow(0 .7px 0 rgba(255,250,228,.85))}
+.wl-book svg{display:block}
+.slot.wish .nameplate .mk{padding-right:18px}
 .slot.add{aspect-ratio:1;cursor:pointer;border:1.5px dashed color-mix(in srgb,var(--brass-1) 45%,transparent);background:radial-gradient(120% 120% at 50% 20%, color-mix(in srgb,var(--felt-1) 55%,#000), var(--felt-2));align-items:center;justify-content:center;color:var(--brass-1)}
 .slot.add .plus{font-size:2.2rem;line-height:1;font-weight:300}
 .slot.add .lbl{font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;margin-top:6px;opacity:.85}
@@ -308,10 +310,10 @@ function dragEnabled(){return filter==="all" && !search;}
 function sortedWatches(){return watches.slice().sort((a,b)=>((a.order??a.createdAt??0)-(b.order??b.createdAt??0)));}
 function slotHTML(w){
   const img=w.image?`<img src="${esc(w.image)}" alt="${esc(w.brand)} ${esc(w.model)}" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(window.__SIL))">`:SILHOUETTE;
-  return `<button class="slot ${w.purchased?"":"wish"}" data-id="${esc(w.id)}" draggable="${dragEnabled()?"true":"false"}" aria-label="${esc(w.brand)} ${esc(w.model)} — view details">
-    ${w.purchased?"":'<div class="tag">Wish</div>'}
+  const bookmark=w.purchased?"":`<span class="wl-book" aria-hidden="true"><svg viewBox="0 0 12 16" width="11" height="15"><path d="M1.9 1.4 H10.1 V14.2 L6 10.7 L1.9 14.2 Z" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg></span>`;
+  return `<button class="slot ${w.purchased?"":"wish"}" data-id="${esc(w.id)}" draggable="${dragEnabled()?"true":"false"}" aria-label="${esc(w.brand)} ${esc(w.model)}${w.purchased?"":" (wishlist)"} — view details">
     <div class="pic">${img}<div class="vig"></div></div>
-    <div class="nameplate"><div class="mk">${esc(w.brand)}</div><div class="md">${esc(w.model)}</div></div>
+    <div class="nameplate"><div class="mk">${esc(w.brand)}</div><div class="md">${esc(w.model)}</div>${bookmark}</div>
   </button>`;
 }
 window.__SIL=SILHOUETTE;
