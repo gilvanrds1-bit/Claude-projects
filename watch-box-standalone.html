@@ -350,7 +350,7 @@ function openDetail(id){
   if(w.lug)rows.push(["Lug-to-lug",esc(w.lug)+" mm"]);
   if(w.purchased){rows.push(["Purchased",w.purchaseDate?esc(fmtDate(w.purchaseDate)):"Yes"]);if(w.cost)rows.push(["Cost",esc(money(w.cost,w.currency))]);}
   const status=w.purchased?`<span class="status-pill owned">● In the collection</span>`:`<span class="status-pill wish">○ On the wishlist</span>`;
-  openSheet(`${esc(w.brand)} ${esc(w.model)}`,`
+  openSheet(`${w.brand} ${w.model}`,`
     <div class="detail">
       <div class="photo">${img}</div>
       <div>
