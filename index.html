@@ -55,13 +55,15 @@ body{
 .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:22px}
 .brand h1{font-family:var(--f-display);font-weight:600;font-size:clamp(2.1rem,5.5vw,3.1rem);line-height:.98;margin:0;letter-spacing:.01em;text-wrap:balance}
 .brand .tagline{margin:.3rem 0 0;font-size:.74rem;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
-.stats{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap}
+.stats{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap;flex:1 1 auto}
 .stat{line-height:1.05}
 .stat b{font-family:var(--f-display);font-size:1.7rem;font-weight:600;display:block;font-variant-numeric:tabular-nums}
 .stat span{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
 .icon-btn{background:none;border:1px solid var(--line);color:var(--muted);height:38px;min-width:38px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:.8rem;font-family:var(--f-ui);display:inline-flex;align-items:center;gap:6px;transition:.2s;text-decoration:none}
 .icon-btn:hover{color:var(--fg);border-color:var(--accent)}
-.tools{display:flex;gap:8px;align-items:center}
+.tools{display:flex;gap:8px;align-items:center;margin-left:auto;position:relative}
+.tools-group{display:flex;gap:8px;align-items:center}
+.tools-toggle{display:none;font-size:1.15rem;line-height:1}
 .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
 .filters{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;gap:2px}
 .filters button{border:0;background:none;cursor:pointer;color:var(--muted);font-family:var(--f-ui);font-size:.82rem;font-weight:500;padding:7px 16px;border-radius:999px;transition:.18s;letter-spacing:.02em;display:inline-flex;align-items:center;gap:7px}
@@ -162,7 +164,13 @@ dl.specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-siz
 .form-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
 .err{color:var(--danger);font-size:.82rem;margin-top:10px;min-height:1em}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-@media (max-width:620px){.detail{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.stats{gap:16px}}
+@media (max-width:620px){.detail{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.stats{gap:16px}
+  .topbar{position:relative}
+  .tools{position:absolute;top:0;right:0;margin-left:0}
+  .tools-toggle{display:inline-flex}
+  .tools-group{position:absolute;top:calc(100% + 8px);right:0;z-index:40;flex-direction:column;align-items:stretch;gap:6px;min-width:172px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 14px 34px -12px var(--shadow);display:none}
+  .tools-group.open{display:flex}
+  .tools-group .icon-btn{width:100%;justify-content:flex-start;height:40px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -179,10 +187,13 @@ dl.specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-siz
       <div class="stat"><b id="statValue">—</b><span>Collection value</span></div>
       <div class="stat"><b id="statWishValue">—</b><span>Wishlist value</span></div>
       <div class="tools">
-        <a class="icon-btn" href="https://gilvanrds1-bit.github.io/Claude-projects/guide.html" target="_blank" rel="noopener" title="Open the Quick Start guide">❔ Guide</a>
-        <button class="icon-btn" id="backupBtn" title="Export a backup file">⇩ Backup</button>
-        <button class="icon-btn" id="restoreBtn" title="Import a backup file">⇧ Restore</button>
-        <button class="icon-btn" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
+        <button class="icon-btn tools-toggle" id="toolsToggle" aria-haspopup="true" aria-expanded="false" aria-controls="toolsGroup" aria-label="More options" title="More options">⋯</button>
+        <div class="tools-group" id="toolsGroup">
+          <a class="icon-btn" href="https://gilvanrds1-bit.github.io/Claude-projects/guide.html" target="_blank" rel="noopener" title="Open the Quick Start guide">❔ Guide</a>
+          <button class="icon-btn" id="backupBtn" title="Export a backup file">⇩ Backup</button>
+          <button class="icon-btn" id="restoreBtn" title="Import a backup file">⇧ Restore</button>
+          <button class="icon-btn" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
+        </div>
         <input id="restoreInput" type="file" accept="application/json,.json" class="visually-hidden">
       </div>
     </div>
@@ -273,6 +284,22 @@ $("#themeBtn").addEventListener("click",()=>{
   document.documentElement.setAttribute("data-theme",next);
   try{localStorage.setItem("wb-theme",next);}catch(e){}
 });
+
+/* tools overflow menu (mobile: the control buttons collapse behind a ⋯ button) */
+(function(){
+  const toggle=$("#toolsToggle"), group=$("#toolsGroup");
+  if(!toggle||!group)return;
+  const close=()=>{group.classList.remove("open");toggle.setAttribute("aria-expanded","false");};
+  toggle.addEventListener("click",e=>{
+    e.stopPropagation();
+    const willOpen=!group.classList.contains("open");
+    group.classList.toggle("open",willOpen);
+    toggle.setAttribute("aria-expanded",willOpen?"true":"false");
+  });
+  document.addEventListener("click",e=>{if(group.classList.contains("open")&&!group.contains(e.target)&&e.target!==toggle)close();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+  group.addEventListener("click",e=>{if(e.target.closest(".icon-btn"))close();});
+})();
 
 /* ---------- helpers ---------- */
 function money(amount,cur){
