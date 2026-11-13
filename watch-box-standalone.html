@@ -104,6 +104,7 @@ body{
 .nameplate{position:relative;background:linear-gradient(180deg,var(--brass-1),var(--brass-2) 55%,var(--brass-3));color:var(--plate-ink);padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-top:1px solid color-mix(in srgb,var(--brass-1) 80%,#fff);box-shadow:0 -2px 6px rgba(0,0,0,.3)}
 .nameplate .mk{font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;font-weight:600;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nameplate .md{font-family:var(--f-display);font-weight:600;font-size:1rem;line-height:1.14;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;height:2.28em}
+.nameplate .pr{font-size:.76rem;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--plate-ink);opacity:.8;height:1.15em;line-height:1.15;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .wl-book{position:absolute;top:8px;right:10px;line-height:0;color:rgba(55,40,16,.6);filter:drop-shadow(0 .7px 0 rgba(255,250,228,.85))}
 .wl-book svg{display:block}
 .slot.wish .nameplate .mk{padding-right:18px}
@@ -176,6 +177,7 @@ dl.specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-siz
       <div class="stat"><b id="statOwned">0</b><span>In collection</span></div>
       <div class="stat"><b id="statWish">0</b><span>On the wishlist</span></div>
       <div class="stat"><b id="statValue">—</b><span>Collection value</span></div>
+      <div class="stat"><b id="statWishValue">—</b><span>Wishlist value</span></div>
       <div class="tools">
         <a class="icon-btn" href="https://gilvanrds1-bit.github.io/Claude-projects/guide.html" target="_blank" rel="noopener" title="Open the Quick Start guide">❔ Guide</a>
         <button class="icon-btn" id="backupBtn" title="Export a backup file">⇩ Backup</button>
@@ -311,9 +313,10 @@ function sortedWatches(){return watches.slice().sort((a,b)=>((a.order??a.created
 function slotHTML(w){
   const img=w.image?`<img src="${esc(w.image)}" alt="${esc(w.brand)} ${esc(w.model)}" loading="lazy" draggable="false" onerror="this.replaceWith(document.createRange().createContextualFragment(window.__SIL))">`:SILHOUETTE;
   const bookmark=w.purchased?"":`<span class="wl-book" aria-hidden="true"><svg viewBox="0 0 12 16" width="11" height="15"><path d="M1.9 1.4 H10.1 V14.2 L6 10.7 L1.9 14.2 Z" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/></svg></span>`;
+  const price=`<div class="pr">${w.cost?esc(money(w.cost,w.currency)):""}</div>`;
   return `<button class="slot ${w.purchased?"":"wish"}" data-id="${esc(w.id)}" draggable="${dragEnabled()?"true":"false"}" aria-label="${esc(w.brand)} ${esc(w.model)}${w.purchased?"":" (wishlist)"} — view details">
     <div class="pic">${img}<div class="vig"></div></div>
-    <div class="nameplate"><div class="mk">${esc(w.brand)}</div><div class="md">${esc(w.model)}</div>${bookmark}</div>
+    <div class="nameplate"><div class="mk">${esc(w.brand)}</div><div class="md">${esc(w.model)}</div>${price}${bookmark}</div>
   </button>`;
 }
 window.__SIL=SILHOUETTE;
@@ -326,6 +329,10 @@ function render(){
   watches.filter(w=>w.purchased&&w.cost).forEach(w=>{const c=w.currency||"USD";totals[c]=(totals[c]||0)+Number(w.cost||0);});
   const parts=Object.keys(totals).map(c=>money(totals[c],c));
   $("#statValue").textContent=parts.length?parts.join(" · "):"—";
+  const wtotals={};
+  watches.filter(w=>!w.purchased&&w.cost).forEach(w=>{const c=w.currency||"USD";wtotals[c]=(wtotals[c]||0)+Number(w.cost||0);});
+  const wparts=Object.keys(wtotals).map(c=>money(wtotals[c],c));
+  $("#statWishValue").textContent=wparts.length?wparts.join(" · "):"—";
 
   const list=sortedWatches().filter(matches);
   let html=list.map(slotHTML).join("");
