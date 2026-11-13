@@ -285,6 +285,7 @@ function openDB(){
 function idbAll(){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readonly");const r=t.objectStore("watches").getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
 function idbPut(rec){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readwrite");t.objectStore("watches").put(rec);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});}
 function idbDel(id){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readwrite");t.objectStore("watches").delete(id);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);});}
+function idbReplaceAll(list){return new Promise((res,rej)=>{const t=IDB.transaction("watches","readwrite");const os=t.objectStore("watches");os.clear();for(const r of list)os.put(r);t.oncomplete=()=>res();t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});}
 function saveLS(){try{localStorage.setItem(KEY,JSON.stringify(watches));return true;}catch(e){return false;}}
 const Store={
   async all(){
@@ -293,7 +294,8 @@ const Store={
   },
   async put(rec){ if(IDB){await idbPut(rec);return true;} return saveLS(); },
   async del(id){ if(IDB){await idbDel(id);return true;} return saveLS(); },
-  async bulkPut(list){ if(IDB){for(const r of list)await idbPut(r);return true;} return saveLS(); }
+  async bulkPut(list){ if(IDB){for(const r of list)await idbPut(r);return true;} return saveLS(); },
+  async replaceAll(list){ if(IDB){await idbReplaceAll(list);return true;} try{localStorage.setItem(KEY,JSON.stringify(list));return true;}catch(e){return false;} }
 };
 function showBanner(msg){const b=$("#banner");b.textContent=msg;b.hidden=false;clearTimeout(showBanner._t);showBanner._t=setTimeout(()=>{b.hidden=true;},6000);}
 
@@ -588,15 +590,71 @@ async function saveWatch(purchased){
 }
 
 /* ---------- backup / restore ---------- */
-$("#backupBtn").addEventListener("click",()=>{
-  const blob=new Blob([JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2)],{type:"application/json"});
+$("#backupBtn").addEventListener("click",async()=>{
+  const name="watch-box-backup-"+new Date().toISOString().slice(0,10)+".json";
+  const json=JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2);
+  // Try the phone's native share sheet first — lets people Save to Drive / OneDrive / email.
+  try{
+    const file=new File([json],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:"The Watch Box backup"});
+      return;
+    }
+  }catch(err){ if(err&&err.name==="AbortError")return; } // user dismissed the share sheet
+  // Fallback everywhere else: a normal download.
+  const blob=new Blob([json],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download="watch-box-backup-"+new Date().toISOString().slice(0,10)+".json";
+  a.download=name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 });
 $("#restoreBtn").addEventListener("click",()=>$("#restoreInput").click());
+
+/* Apply a restored list. "replace" overwrites the whole collection; "merge" updates
+   watches that match by id and adds genuinely new ones — neither ever duplicates. */
+async function doRestore(list,mode){
+  if(mode==="replace"){
+    list.forEach((w,i)=>{ if(!w.id)w.id=uid(); if(typeof w.order!=="number")w.order=i; });
+    watches=list.slice();
+    const ok=await Store.replaceAll(watches);
+    await ensureOrder(); render();
+    return {ok,count:watches.length};
+  }
+  const byId=new Map(watches.map(w=>[w.id,w]));
+  let maxOrder=watches.reduce((m,w)=>Math.max(m,typeof w.order==="number"?w.order:-1),-1);
+  const changed=[]; let added=0,updated=0;
+  list.forEach(w=>{
+    if(w.id&&byId.has(w.id)){
+      const idx=watches.findIndex(x=>x.id===w.id);
+      const keep=watches[idx].order;
+      watches[idx]=Object.assign({},w,{order:typeof w.order==="number"?w.order:keep});
+      changed.push(watches[idx]); updated++;
+    }else{
+      if(!w.id)w.id=uid();
+      if(typeof w.order!=="number")w.order=++maxOrder;
+      watches.push(w); byId.set(w.id,w); changed.push(w); added++;
+    }
+  });
+  const ok=await Store.bulkPut(changed);
+  await ensureOrder(); render();
+  return {ok,added,updated,count:watches.length};
+}
+
+function askRestoreMode(list){
+  openSheet("Restore from backup",`
+    <p>This backup holds <strong>${list.length}</strong> watch${list.length===1?"":"es"}. You currently have <strong>${watches.length}</strong> in the box.</p>
+    <p class="hint" style="margin-top:10px"><strong>Replace</strong> overwrites your current collection with the backup (your current watches are removed). <strong>Merge</strong> adds the backup in, updating any that match and never creating duplicates.</p>
+    <div class="form-foot" style="justify-content:flex-start;flex-wrap:wrap">
+      <button class="btn btn-primary" id="rsReplace">Replace with backup</button>
+      <button class="btn btn-ghost" id="rsMerge">Merge</button>
+      <button class="btn btn-ghost" id="rsCancel">Cancel</button>
+    </div>`);
+  $("#rsReplace").onclick=async()=>{closeSheet();try{const r=await doRestore(list,"replace");showBanner(r.ok?("Replaced your collection with "+r.count+" watch"+(r.count===1?"":"es")+" from the backup."):"Restored, but storage ran out — free some space.");}catch(e){showBanner("Couldn't restore just now — please try again.");}};
+  $("#rsMerge").onclick=async()=>{closeSheet();try{const r=await doRestore(list,"merge");showBanner(r.ok?("Merged backup — "+r.added+" added, "+r.updated+" updated, "+r.count+" total."):"Merged, but storage ran out — free some space.");}catch(e){showBanner("Couldn't restore just now — please try again.");}};
+  $("#rsCancel").onclick=closeSheet;
+}
+
 $("#restoreInput").addEventListener("change",e=>{
   const file=e.target.files&&e.target.files[0]; if(!file)return;
   const r=new FileReader();
@@ -605,12 +663,10 @@ $("#restoreInput").addEventListener("change",e=>{
       const data=JSON.parse(r.result);
       const incoming=Array.isArray(data)?data:(data&&Array.isArray(data.watches)?data.watches:null);
       if(!incoming)throw new Error("format");
-      const byId=new Set(watches.map(w=>w.id));
-      const toAdd=[]; let added=0;
-      incoming.forEach(w=>{if(w&&w.brand&&w.model){if(!w.id||byId.has(w.id))w.id=uid();watches.push(w);byId.add(w.id);toAdd.push(w);added++;}});
-      const ok=await Store.bulkPut(toAdd);
-      render();
-      showBanner(ok?("Restored "+added+" watch"+(added===1?"":"es")+" from backup."):"Restored, but storage ran out — export a backup and free some space.");
+      const clean=incoming.filter(w=>w&&w.brand&&w.model);
+      if(!clean.length){showBanner("That file has no watches to restore.");}
+      else if(!watches.length){const r2=await doRestore(clean,"replace");showBanner(r2.ok?("Restored "+r2.count+" watch"+(r2.count===1?"":"es")+" from backup."):"Restored, but storage ran out — free some space.");}
+      else{askRestoreMode(clean);}
     }catch(err){showBanner("That file isn't a valid Watch Box backup.");}
     $("#restoreInput").value="";
   };
