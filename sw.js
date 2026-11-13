@@ -2,7 +2,7 @@
    Strategy: network-first for the page so updates appear immediately when online;
    cache-first for static assets (icons, manifest); cached copy is the offline fallback.
    Bump VERSION on every deploy so returning visitors get the new files. */
-const VERSION = "v1";
+const VERSION = "v2";
 const CACHE = "watchbox-" + VERSION;
 const ASSETS = [
   "./",
