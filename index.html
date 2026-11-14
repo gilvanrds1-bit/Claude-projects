@@ -788,6 +788,24 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
   addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});
 }
 </script>
+<script>
+/* TEMP diagnostic: add ?diag to the URL to see this device's Web Share capabilities */
+(function(){
+  if(location.search.indexOf("diag")<0)return;
+  function run(){
+    function mk(n,t){try{return new File(["{}"],n,{type:t});}catch(e){return null;}}
+    function cs(f){try{return navigator.canShare?String(navigator.canShare({files:[f]})):"noCanShare";}catch(e){return "err:"+(e&&e.name);}}
+    var rep="share="+(typeof navigator.share)+"  canShare="+(typeof navigator.canShare)
+      +"  txt="+cs(mk("b.txt","text/plain"))+"  json="+cs(mk("b.json","application/json"))+"  png="+cs(mk("b.png","image/png"))
+      +"  secure="+window.isSecureContext+"  standalone="+matchMedia("(display-mode: standalone)").matches;
+    var d=document.createElement("div");
+    d.textContent="DIAG  "+rep;
+    d.style.cssText="position:fixed;left:0;right:0;top:0;z-index:99999;background:#111;color:#4f4;font:12px/1.5 monospace;padding:10px;white-space:normal;word-break:break-word";
+    document.body.appendChild(d);
+  }
+  if(document.body)run(); else addEventListener("DOMContentLoaded",run);
+})();
+</script>
 <script data-goatcounter="https://gman99.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
