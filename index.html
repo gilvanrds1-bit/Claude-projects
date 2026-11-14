@@ -212,7 +212,7 @@ dl.specs dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-siz
           <button class="icon-btn" id="restoreBtn" title="Import a backup file">⇧ Restore</button>
           <button class="icon-btn" id="themeBtn" title="Switch light / dark" aria-label="Switch light or dark theme">◐</button>
         </div>
-        <input id="restoreInput" type="file" accept="application/json,.json" class="visually-hidden">
+        <input id="restoreInput" type="file" accept="application/json,.json,text/plain,.txt" class="visually-hidden">
       </div>
     </div>
   </header>
@@ -591,14 +591,24 @@ async function saveWatch(purchased){
 
 /* ---------- backup / restore ---------- */
 $("#backupBtn").addEventListener("click",async()=>{
-  const name="watch-box-backup-"+new Date().toISOString().slice(0,10)+".json";
+  const date=new Date().toISOString().slice(0,10);
+  const name="watch-box-backup-"+date+".json";
   const json=JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2);
-  // Try the phone's native share sheet first — lets people Save to Drive / OneDrive / email.
+  // Native share sheet (phones) lets people Save to Drive / OneDrive / email. Most phone
+  // browsers refuse to share a .json file, so also offer the same contents as a .txt —
+  // Restore reads either. Try .json first (clean), fall back to .txt.
   try{
-    const file=new File([json],name,{type:"application/json"});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:"The Watch Box backup"});
-      return;
+    if(navigator.canShare){
+      const files=[
+        new File([json],name,{type:"application/json"}),
+        new File([json],"watch-box-backup-"+date+".txt",{type:"text/plain"})
+      ];
+      for(const f of files){
+        if(navigator.canShare({files:[f]})){
+          await navigator.share({files:[f],title:"The Watch Box backup"});
+          return;
+        }
+      }
     }
   }catch(err){ if(err&&err.name==="AbortError")return; } // user dismissed the share sheet
   // Fallback everywhere else: a normal download.
