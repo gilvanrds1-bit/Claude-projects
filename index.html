@@ -802,18 +802,23 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
     bar.textContent="DIAG share="+(typeof navigator.share)+" canShare="+(typeof navigator.canShare)+" txt="+cs(mk("b.txt","text/plain"))+" json="+cs(mk("b.json","application/json"))+" standalone="+matchMedia("(display-mode: standalone)").matches+"  — now tap Backup to test the real share";
     document.body.appendChild(bar);
     var btn=document.getElementById("backupBtn");
+    var attempt=0;
+    var tests=[
+      {label:"1 small .txt file", fn:function(){return navigator.share({files:[new File(["{\"a\":1}"],"b.txt",{type:"text/plain"})],title:"WB"});}},
+      {label:"1 small .json file", fn:function(){return navigator.share({files:[new File(["{\"a\":1}"],"b.json",{type:"application/json"})],title:"WB"});}},
+      {label:"text only (no file)", fn:function(){return navigator.share({title:"WB",text:"hello from Watch Box"});}},
+      {label:"url only (no file)", fn:function(){return navigator.share({url:location.href});}}
+    ];
     if(btn){
       btn.addEventListener("click",async function(ev){
         ev.stopImmediatePropagation(); ev.preventDefault();
+        var t=tests[attempt%tests.length]; attempt++;
+        bar.textContent="DIAG ["+t.label+"] trying…";
         try{
-          var data=(typeof watches!=="undefined")?watches:[];
-          var json=JSON.stringify({app:"watch-box",version:1,watches:data});
-          var f=new File([json],"watch-box-backup.json",{type:"application/json"});
-          bar.textContent="DIAG sharing… bytes="+json.length+" canShare(file)="+navigator.canShare({files:[f]});
-          await navigator.share({files:[f],title:"The Watch Box backup"});
-          bar.textContent="DIAG share RESOLVED OK (sheet should have appeared)";
+          await t.fn();
+          bar.textContent="DIAG ["+t.label+"] OK ✓  — tap Backup again for the next test";
         }catch(e){
-          bar.textContent="DIAG share ERROR: "+(e&&e.name)+" — "+(e&&e.message);
+          bar.textContent="DIAG ["+t.label+"] ERROR: "+(e&&e.name)+" — "+(e&&e.message)+"   (tap Backup again for next)";
         }
       },true);
     }
