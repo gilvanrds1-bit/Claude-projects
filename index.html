@@ -789,19 +789,34 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
 }
 </script>
 <script>
-/* TEMP diagnostic: add ?diag to the URL to see this device's Web Share capabilities */
+/* TEMP diagnostic: add ?diag to the URL. Shows Web Share capabilities, and when you
+   tap Backup it attempts the real share and reports exactly what happens. */
 (function(){
   if(location.search.indexOf("diag")<0)return;
   function run(){
+    var bar=document.createElement("div");
+    bar.id="__diagbar";
+    bar.style.cssText="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#111;color:#4f4;font:12px/1.5 monospace;padding:10px;white-space:normal;word-break:break-word";
     function mk(n,t){try{return new File(["{}"],n,{type:t});}catch(e){return null;}}
     function cs(f){try{return navigator.canShare?String(navigator.canShare({files:[f]})):"noCanShare";}catch(e){return "err:"+(e&&e.name);}}
-    var rep="share="+(typeof navigator.share)+"  canShare="+(typeof navigator.canShare)
-      +"  txt="+cs(mk("b.txt","text/plain"))+"  json="+cs(mk("b.json","application/json"))+"  png="+cs(mk("b.png","image/png"))
-      +"  secure="+window.isSecureContext+"  standalone="+matchMedia("(display-mode: standalone)").matches;
-    var d=document.createElement("div");
-    d.textContent="DIAG  "+rep;
-    d.style.cssText="position:fixed;left:0;right:0;top:0;z-index:99999;background:#111;color:#4f4;font:12px/1.5 monospace;padding:10px;white-space:normal;word-break:break-word";
-    document.body.appendChild(d);
+    bar.textContent="DIAG share="+(typeof navigator.share)+" canShare="+(typeof navigator.canShare)+" txt="+cs(mk("b.txt","text/plain"))+" json="+cs(mk("b.json","application/json"))+" standalone="+matchMedia("(display-mode: standalone)").matches+"  — now tap Backup to test the real share";
+    document.body.appendChild(bar);
+    var btn=document.getElementById("backupBtn");
+    if(btn){
+      btn.addEventListener("click",async function(ev){
+        ev.stopImmediatePropagation(); ev.preventDefault();
+        try{
+          var data=(typeof watches!=="undefined")?watches:[];
+          var json=JSON.stringify({app:"watch-box",version:1,watches:data});
+          var f=new File([json],"watch-box-backup.json",{type:"application/json"});
+          bar.textContent="DIAG sharing… bytes="+json.length+" canShare(file)="+navigator.canShare({files:[f]});
+          await navigator.share({files:[f],title:"The Watch Box backup"});
+          bar.textContent="DIAG share RESOLVED OK (sheet should have appeared)";
+        }catch(e){
+          bar.textContent="DIAG share ERROR: "+(e&&e.name)+" — "+(e&&e.message);
+        }
+      },true);
+    }
   }
   if(document.body)run(); else addEventListener("DOMContentLoaded",run);
 })();
