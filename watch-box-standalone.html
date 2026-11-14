@@ -594,23 +594,21 @@ $("#backupBtn").addEventListener("click",async()=>{
   const date=new Date().toISOString().slice(0,10);
   const name="watch-box-backup-"+date+".json";
   const json=JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2);
-  // Native share sheet (phones) lets people Save to Drive / OneDrive / email. Most phone
-  // browsers refuse to share a .json file, so also offer the same contents as a .txt —
-  // Restore reads either. Try .json first (clean), fall back to .txt.
-  try{
-    if(navigator.canShare){
-      const files=[
-        new File([json],name,{type:"application/json"}),
-        new File([json],"watch-box-backup-"+date+".txt",{type:"text/plain"})
-      ];
-      for(const f of files){
-        if(navigator.canShare({files:[f]})){
-          await navigator.share({files:[f],title:"The Watch Box backup"});
-          return;
-        }
+  // Native share sheet (phones) lets people Save to Drive / OneDrive / email. Share it as a
+  // .txt file: phones reliably allow text/plain, whereas many report they can share a .json
+  // but then refuse with "Permission denied". Restore reads either, by the JSON inside.
+  if(navigator.canShare){
+    const txtFile=new File([json],"watch-box-backup-"+date+".txt",{type:"text/plain"});
+    if(navigator.canShare({files:[txtFile]})){
+      try{
+        await navigator.share({files:[txtFile],title:"The Watch Box backup"});
+        return;
+      }catch(err){
+        if(err&&err.name==="AbortError")return; // user dismissed the share sheet
+        // any other error: fall through to a normal download
       }
     }
-  }catch(err){ if(err&&err.name==="AbortError")return; } // user dismissed the share sheet
+  }
   // Fallback everywhere else: a normal download.
   const blob=new Blob([json],{type:"application/json"});
   const a=document.createElement("a");
