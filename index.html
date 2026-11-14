@@ -594,23 +594,21 @@ $("#backupBtn").addEventListener("click",async()=>{
   const date=new Date().toISOString().slice(0,10);
   const name="watch-box-backup-"+date+".json";
   const json=JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2);
-  // Native share sheet (phones) lets people Save to Drive / OneDrive / email. Most phone
-  // browsers refuse to share a .json file, so also offer the same contents as a .txt —
-  // Restore reads either. Try .json first (clean), fall back to .txt.
-  try{
-    if(navigator.canShare){
-      const files=[
-        new File([json],name,{type:"application/json"}),
-        new File([json],"watch-box-backup-"+date+".txt",{type:"text/plain"})
-      ];
-      for(const f of files){
-        if(navigator.canShare({files:[f]})){
-          await navigator.share({files:[f],title:"The Watch Box backup"});
-          return;
-        }
+  // Native share sheet (phones) lets people Save to Drive / OneDrive / email. Share it as a
+  // .txt file: phones reliably allow text/plain, whereas many report they can share a .json
+  // but then refuse with "Permission denied". Restore reads either, by the JSON inside.
+  if(navigator.canShare){
+    const txtFile=new File([json],"watch-box-backup-"+date+".txt",{type:"text/plain"});
+    if(navigator.canShare({files:[txtFile]})){
+      try{
+        await navigator.share({files:[txtFile],title:"The Watch Box backup"});
+        return;
+      }catch(err){
+        if(err&&err.name==="AbortError")return; // user dismissed the share sheet
+        // any other error: fall through to a normal download
       }
     }
-  }catch(err){ if(err&&err.name==="AbortError")return; } // user dismissed the share sheet
+  }
   // Fallback everywhere else: a normal download.
   const blob=new Blob([json],{type:"application/json"});
   const a=document.createElement("a");
@@ -787,44 +785,6 @@ $("#search").addEventListener("input",e=>{search=e.target.value.trim().toLowerCa
 if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
   addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});
 }
-</script>
-<script>
-/* TEMP diagnostic: add ?diag to the URL. Shows Web Share capabilities, and when you
-   tap Backup it attempts the real share and reports exactly what happens. */
-(function(){
-  if(location.search.indexOf("diag")<0)return;
-  function run(){
-    var bar=document.createElement("div");
-    bar.id="__diagbar";
-    bar.style.cssText="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#111;color:#4f4;font:12px/1.5 monospace;padding:10px;white-space:normal;word-break:break-word";
-    function mk(n,t){try{return new File(["{}"],n,{type:t});}catch(e){return null;}}
-    function cs(f){try{return navigator.canShare?String(navigator.canShare({files:[f]})):"noCanShare";}catch(e){return "err:"+(e&&e.name);}}
-    bar.textContent="DIAG share="+(typeof navigator.share)+" canShare="+(typeof navigator.canShare)+" txt="+cs(mk("b.txt","text/plain"))+" json="+cs(mk("b.json","application/json"))+" standalone="+matchMedia("(display-mode: standalone)").matches+"  — now tap Backup to test the real share";
-    document.body.appendChild(bar);
-    var btn=document.getElementById("backupBtn");
-    var attempt=0;
-    var tests=[
-      {label:"1 small .txt file", fn:function(){return navigator.share({files:[new File(["{\"a\":1}"],"b.txt",{type:"text/plain"})],title:"WB"});}},
-      {label:"1 small .json file", fn:function(){return navigator.share({files:[new File(["{\"a\":1}"],"b.json",{type:"application/json"})],title:"WB"});}},
-      {label:"text only (no file)", fn:function(){return navigator.share({title:"WB",text:"hello from Watch Box"});}},
-      {label:"url only (no file)", fn:function(){return navigator.share({url:location.href});}}
-    ];
-    if(btn){
-      btn.addEventListener("click",async function(ev){
-        ev.stopImmediatePropagation(); ev.preventDefault();
-        var t=tests[attempt%tests.length]; attempt++;
-        bar.textContent="DIAG ["+t.label+"] trying…";
-        try{
-          await t.fn();
-          bar.textContent="DIAG ["+t.label+"] OK ✓  — tap Backup again for the next test";
-        }catch(e){
-          bar.textContent="DIAG ["+t.label+"] ERROR: "+(e&&e.name)+" — "+(e&&e.message)+"   (tap Backup again for next)";
-        }
-      },true);
-    }
-  }
-  if(document.body)run(); else addEventListener("DOMContentLoaded",run);
-})();
 </script>
 <script data-goatcounter="https://gman99.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
