@@ -594,10 +594,13 @@ $("#backupBtn").addEventListener("click",async()=>{
   const date=new Date().toISOString().slice(0,10);
   const name="watch-box-backup-"+date+".json";
   const json=JSON.stringify({app:"watch-box",version:1,exportedAt:new Date().toISOString(),watches},null,2);
-  // Native share sheet (phones) lets people Save to Drive / OneDrive / email. Share it as a
-  // .txt file: phones reliably allow text/plain, whereas many report they can share a .json
-  // but then refuse with "Permission denied". Restore reads either, by the JSON inside.
-  if(navigator.canShare){
+  // On a touch device (phone/tablet) use the native share sheet so people can Save to
+  // Drive / OneDrive / email. On desktop a plain download is more reliable (the Windows
+  // share-to-OneDrive flow hides the file), so there we skip sharing and just download.
+  // Share as a .txt file: phones allow text/plain, but report they can share a .json and
+  // then refuse it with "Permission denied". Restore reads either, by the JSON inside.
+  const touchDevice = matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 1;
+  if(touchDevice && navigator.canShare){
     const txtFile=new File([json],"watch-box-backup-"+date+".txt",{type:"text/plain"});
     if(navigator.canShare({files:[txtFile]})){
       try{
